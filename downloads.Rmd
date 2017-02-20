@@ -1,0 +1,141 @@
+---
+title: "Data sources"
+output: html_document
+---
+
+```{r defFun, echo=F}
+myDownload <- function(URL,dstPath="indata"){
+  dstFile <- file.path(dstPath, basename(URL))
+  if( !file.exists(dstFile) )
+    download.file(URL, dstFile,quiet = T)
+  cat(sprintf("* [%s](%s)\n",basename(URL),URL))
+  return(dstFile)
+}
+
+```
+
+### From PODC
+
+Expression matrices:
+
+```{r PODCexpMat, echo=F, results='asis'}
+
+PODCexpMatURLs <- c("http://plantomics.mind.meiji.ac.jp/podc/data/arabidopsis_thaliana_fpkm.tsv.gz",
+                    "http://plantomics.mind.meiji.ac.jp/podc/data/oryza_sativa_fpkm.tsv.gz")
+
+invisible( sapply(PODCexpMatURLs, myDownload) )
+
+```
+
+Sample metadata:
+
+```{r PODCmetadata, echo=F, results='asis'}
+
+PODCmetadataURLs <- c("http://plantomics.mind.meiji.ac.jp/podc/data/arabidopsis_thaliana_sample.xls",
+                    "http://plantomics.mind.meiji.ac.jp/podc/data/oryza_sativa_sample.xls")
+
+PODCmetadataFiles <- sapply(PODCmetadataURLs, myDownload)
+
+```
+
+Note: The "readxl" package couldn't open the .xls files, but managed to open .xlsx files. The .xls files therefore had to be converted .xlsx, which was done "manually". For convenience xls files were converted to .RDS files
+
+
+### Ensembl BioMart
+
+* At_Os_orthologs.txt - At:Os orthologs
+* Os_At_orthologs.txt - Os:At orthologs
+
+```{r biomart, eval=F, include=F}
+library(biomaRt)
+
+At_Os_ortho_file <- "../indata/At_Os_orthologs.txt"
+
+# download from biomart if not already downloaded
+if( !file.exists(At_Os_ortho_file) ){
+  library(biomaRt)
+  
+  # listMarts(host="plants.ensembl.org")
+  
+  # use arabidopsis database
+  ensembl <- useMart("plants_mart",dataset="athaliana_eg_gene", host="plants.ensembl.org")
+  
+  # get At gene id and corresponding Os ortholog. Filter: only genes with Os homolog
+  At_Os_orthos <- getBM(attributes=c("ensembl_gene_id", 
+                                     "osativa_eg_homolog_ensembl_gene",
+                                     "osativa_eg_homolog_orthology_type",
+                                     "osativa_eg_homolog_subtype",
+                                     "osativa_eg_homolog_perc_id",
+                                     "osativa_eg_homolog_perc_id_r1"), 
+                        filters = 'with_osativa_eg_homolog', values = T, mart = ensembl)
+
+  # change the column names
+  colnames(At_Os_orthos) <- c("At","Os","otype","MRCA","PID","PIDr")  
+  # convert orthology type
+  oTypes <- c(ortholog_many2many = "N:N", ortholog_one2many = "1:N", ortholog_one2one = "1:1")
+  At_Os_orthos$otype <- oTypes[At_Os_orthos$otype]
+
+  write.table(At_Os_orthos,file = At_Os_ortho_file, row.names = F,quote = F,sep="\t")
+}
+
+#
+# Get Os:At orthologs also
+#
+Os_At_ortho_file <- "../indata/Os_At_orthologs.txt"
+
+# download from biomart if not already downloaded
+if( !file.exists(Os_At_ortho_file) ){
+  
+  ensembl <- useMart("plants_mart",dataset="osativa_eg_gene", host="plants.ensembl.org")
+  
+  # get Os gene id and corresponding At ortholog. Filter: only genes with At homolog
+  Os_At_orthos <- getBM(attributes=c("ensembl_gene_id", "athaliana_eg_homolog_ensembl_gene","athaliana_eg_homolog_subtype"), 
+                        filters = 'with_athaliana_eg_homolog', values = T, mart = ensembl)
+  
+  colnames(Os_At_orthos) <- c("Os","At","MRCA")  
+  
+  write.table(Os_At_orthos,file = Os_At_ortho_file, row.names = F,quote = F,sep="\t")
+}
+
+```
+
+```{r}
+library(biomaRt)
+
+downloadParalogs <- function(species="athaliana", filename){
+  # use the ensembl plants mart
+  ensembl <- useMart("plants_mart",dataset=paste0(species,"_eg_gene"), host="plants.ensembl.org")
+  # get gene id, paralogs and MRCA
+  paralogs <- getBM(attributes=c("ensembl_gene_id", 
+                                 paste0(species,"_eg_paralog_ensembl_gene"),
+                                 paste0(species,"_eg_paralog_subtype")), # MRCA
+                    mart = ensembl)
+  # change the column names
+  colnames(paralogs) <- c("geneID","paralog","MRCA")
+  
+  saveRDS(paralogs,file = filename)
+}
+
+At_paralog_file <- "../indata/At_paralogs.RDS"
+Os_paralog_file <- "../indata/Os_paralogs.RDS"
+
+# download from biomart if not already downloaded
+if( !file.exists(At_paralog_file) ){
+  downloadParalogs(species = "athaliana", filename = At_paralog_file)
+}
+if( !file.exists(Os_paralog_file) ){
+  downloadParalogs(species = "osativa", filename = Os_paralog_file)
+}
+
+
+# download from biomart if not already downloaded
+
+```
+
+### Ensembl compara gene trees
+
+Gene tree dump from Ensembl Plants version 33.
+
+```{r ComparaGeneTrees, echo=F, results='asis'}
+myDownload(URL = "ftp://ftp.ensemblgenomes.org/pub/plants/release-33/emf/ensembl-compara/homologies/Compara.phyloxml_aa_trees.33.tar.gz")
+```
