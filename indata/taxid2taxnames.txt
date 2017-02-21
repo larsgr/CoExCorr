@@ -1,129 +1,80 @@
 taxid	taxname
-4538	Oryza glaberrima
-39947	Oryza sativa Japonica Group
-29760	Vitis vinifera
-3218	Physcomitrella patens
-559292	Saccharomyces cerevisiae S288c
-88036	Selaginella moellendorffii
-9606	Homo sapiens
-51511	Ciona savignyi
-6239	Caenorhabditis elegans
-81972	Arabidopsis lyrata subsp. lyrata
-3702	Arabidopsis thaliana
+2759	Eukaryota
+2763	Rhodophyta
+2769	Chondrus crispus
+3041	Chlorophyta
 3055	Chlamydomonas reinhardtii
-39946	Oryza sativa Indica Group
-4555	Setaria italica
-4113	Solanum tuberosum
-4081	Solanum lycopersicum
+3193	Embryophyta
+3218	Physcomitrella patens
+3398	Magnoliophyta
+3555	Beta vulgaris subsp. vulgaris
+3641	Theobroma cacao
 3694	Populus trichocarpa
-214687	Musa acuminata subsp. malaccensis
+3700	Brassicaceae
+3701	Arabidopsis
+3702	Arabidopsis thaliana
+3705	Brassica
+3708	Brassica napus
+3760	Prunus persica
+3814	Papilionoideae
 3847	Glycine max
 3880	Medicago truncatula
-40148	Oryza glumipatula
-436017	Ostreococcus lucimarinus CCE9901
-65489	Oryza barthii
+4081	Solanum lycopersicum
+4107	Solanum
+4113	Solanum tuberosum
+4479	Poaceae
+4527	Oryza
+4528	Oryza longistaminata
 4529	Oryza rufipogon
-7227	Drosophila melanogaster
 4533	Oryza brachyantha
-37682	Aegilops tauschii
-13333	Amborella trichopoda
 4536	Oryza nivara
 4537	Oryza punctata
-40149	Oryza meridionalis
-4528	Oryza longistaminata
-4565	Triticum aestivum
-3555	Beta vulgaris subsp. vulgaris
-3708	Brassica napus
-109376	Brassica oleracea var. oleracea
-4577	Zea mays
-3641	Theobroma cacao
-77586	Leersia perrieri
-4572	Triticum urartu
-3760	Prunus persica
-4558	Sorghum bicolor
-57577	Trifolium pratense
-130081	Galdieria sulphuraria
-51351	Brassica rapa subsp. pekinensis
-15368	Brachypodium distachyon
-2769	Chondrus crispus
-112509	Hordeum vulgare subsp. vulgare
-280699	Cyanidioschyzon merolae strain 10D
-4527	Oryza
-29760	Vitis vinifera
-3218	Physcomitrella patens
-559292	Saccharomyces cerevisiae S288c
-88036	Selaginella moellendorffii
-7711	Chordata
-6239	Caenorhabditis elegans
-81972	Arabidopsis lyrata subsp. lyrata
-3701	Arabidopsis
-3055	Chlamydomonas reinhardtii
-9606	Homo sapiens
-39946	Oryza sativa Indica Group
+4538	Oryza glaberrima
 4555	Setaria italica
-4107	Solanum
-3398	Magnoliophyta
-3847	Glycine max
-3880	Medicago truncatula
-3041	Chlorophyta
-40148	Oryza glumipatula
-7227	Drosophila melanogaster
-359160	BOP clade
-13333	Amborella trichopoda
-4537	Oryza punctata
-1437201	Pentapetalae
-4081	Solanum lycopersicum
-3708	Brassica napus
-147389	Triticeae
-3705	Brassica
-4577	Zea mays
-3555	Beta vulgaris subsp. vulgaris
-4479	Poaceae
-4113	Solanum tuberosum
-214687	Musa acuminata subsp. malaccensis
-33090	Viridiplantae
-3641	Theobroma cacao
-147380	Oryzeae
-3193	Embryophyta
-33154	Opisthokonta
-39947	Oryza sativa Japonica Group
+4558	Sorghum bicolor
+4564	Triticum
+4565	Triticum aestivum
 4572	Triticum urartu
-3760	Prunus persica
+4577	Zea mays
+4734	commelinids
+6239	Caenorhabditis elegans
+7227	Drosophila melanogaster
+7711	Chordata
+9606	Homo sapiens
+13333	Amborella trichopoda
+15368	Brachypodium distachyon
+29760	Vitis vinifera
+33090	Viridiplantae
+33154	Opisthokonta
+37682	Aegilops tauschii
+39946	Oryza sativa Indica Group
+39947	Oryza sativa Japonica Group
+40148	Oryza glumipatula
+40149	Oryza meridionalis
+51351	Brassica rapa subsp. pekinensis
+51511	Ciona savignyi
+57577	Trifolium pratense
+58023	Tracheophyta
+65489	Oryza barthii
+71275	rosids
+77586	Leersia perrieri
+81972	Arabidopsis lyrata subsp. lyrata
+88036	Selaginella moellendorffii
+91835	fabids
+91836	malvids
+109376	Brassica oleracea var. oleracea
+112509	Hordeum vulgare subsp. vulgare
+130081	Galdieria sulphuraria
+147368	Pooideae
+147369	Panicoideae
+147380	Oryzeae
+147389	Triticeae
 147429	Andropogoneae
 163742	Trifolieae
-130081	Galdieria sulphuraria
-4564	Triticum
-3694	Populus trichocarpa
-4529	Oryza rufipogon
-109376	Brassica oleracea var. oleracea
-51511	Ciona savignyi
-147368	Pooideae
-4528	Oryza longistaminata
-71275	rosids
-2769	Chondrus crispus
-2759	Eukaryota
-57577	Trifolium pratense
-4558	Sorghum bicolor
-112509	Hordeum vulgare subsp. vulgare
-436017	Ostreococcus lucimarinus CCE9901
-91835	fabids
-4565	Triticum aestivum
-2763	Rhodophyta
-4538	Oryza glaberrima
-1206794	Ecdysozoa
-3814	Papilionoideae
-3702	Arabidopsis thaliana
-77586	Leersia perrieri
-51351	Brassica rapa subsp. pekinensis
-4533	Oryza brachyantha
-15368	Brachypodium distachyon
-4536	Oryza nivara
-4734	commelinids
-58023	Tracheophyta
-3700	Brassicaceae
-65489	Oryza barthii
-147369	Panicoideae
-91836	malvids
-40149	Oryza meridionalis
-37682	Aegilops tauschii
+214687	Musa acuminata subsp. malaccensis
 280699	Cyanidioschyzon merolae strain 10D
+359160	BOP clade
+436017	Ostreococcus lucimarinus CCE9901
+559292	Saccharomyces cerevisiae S288c
+1206794	Ecdysozoa
+1437201	Pentapetalae
