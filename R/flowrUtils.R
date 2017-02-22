@@ -49,7 +49,8 @@ Rjob <- function( source, fun, paramMat=data.frame(), jobName=fun,
   return(list(flowmat = flowmat,flowdef = flowdef))  
 }
 
-# Include this/these job(s) and all downstream jobs
+# Include this/these job(s) and all downstream jobs, 
+# remove up-stream dependencies
 startFromJob <- function(flowList, startJob){
   # check if startJob exists
   if( !all(startJob %in% flowList$flowdef$jobname) )
@@ -163,10 +164,47 @@ flowbind <- function(...){
         flowdef = do.call(rbind,lapply(flowLists,"[[","flowdef")))
 }
 
+# Add prefix to all jobnames and dependencies
+subFlow <- function(flowList, prefix){
+  
+  # first the flowmat (command list)
+  flowList$flowmat$jobname <- paste0(prefix,flowList$flowmat$jobname)
+  
+  # Then the flowdef (dependencies and resource requirements)
+  # the jobnames are easy:
+  flowList$flowdef$jobname <- paste0(prefix,flowList$flowdef$jobname)
+  
+  
+  # For the dependencies we need to take into account that it could "none" or
+  # that there could be multiple dependencies separated by ","
+  
+  sapply( strsplit(flowList$flowdef$prev_jobs,split = ","), function(deps){
+    if( (length(deps) == 1) & (deps[1] == "none") ){
+      
+      # no dependencies
+      return(deps) # just leave it as it is
+      
+    } else if( length(deps) == 0){
+      
+      # also allow the possibility that deps==""
+      return("") # deps = ""
+      
+    } else {
+      
+      # add prefix
+      return(paste0(prefix, deps, collapse=","))
+      
+    }
+  }) -> flowList$flowdef$prev_jobs
+  
+  # return the altered flowList
+  return(flowList)
+}
+
 Rflow <- function(flowname, ...){
   flowList <- flowbind(...)
   
-  to_flow(x = flowList$flowmat, def = as.flowdef(flowList$flowdef),
-          module_cmd = "source /etc/profile.d/modules.sh\nmodule load R/3.3.1",
+  to_flow(x = flowList$flowmat, 
+          def = as.flowdef(flowList$flowdef),
           flowname = flowname)
 }
