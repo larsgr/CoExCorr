@@ -20,8 +20,15 @@ Rjob <- function( source, fun, paramMat=data.frame(), jobName=fun,
   #   arguments to call(), which generates a call object. sapply() is then used
   #   to apply capture.output() to all the call objects, so they become strings.
   funCallStr <- do.call(args = paramMat, what = function(...){
-    sapply(mapply(call,name=fun,..., USE.NAMES=F),capture.output)
+    sapply(mapply(call,name=fun,..., USE.NAMES=F),function(funCall){
+      # convert call to string
+      funCallStr <- capture.output(funCall)
+      # long calls will use multiple lines. Force it to be one line by removing 
+      # leading spaces and collapsing the string
+      paste(sub("^\\s+", "", funCallStr),collapse="")
+    })
   })
+
   
   # Generate source() function call as string
   sourceCallStr <- capture.output(call("source",source))
