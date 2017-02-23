@@ -184,8 +184,42 @@ Rflow(
   )
 ) -> fobj
 
-sample(readRDS(refOrthosFile2),size = 10)
+#####
+#
+# self CCS
+#
 
+Rflow(
+  flowname = "CoExCorr",
+  Rjob(
+    jobName = "At_selfCCS",
+    source = "Rjobs/self_CCSjob.R", 
+    fun = "self_CCSjob",
+    memory_reserved = "20G",
+    cpu_reserved = 10,
+    paramMat = data.frame(
+      miFile = "data/subsets/treesWithAtOs/At.mi",
+      geneIDfile = "data/subsets/treesWithAtOs/At_geneIDs.RDS",
+      refOrthosFile =  "data/subsets/treesWithAtOs/At_AtOs11_geneIDs.RDS",
+      outFile = "data/subsets/treesWithAtOs/At_selfCCS.RDS" ,
+      cores = 10
+    )
+  ),
+  Rjob(
+    jobName = "Os_selfCCS",
+    source = "Rjobs/self_CCSjob.R", 
+    fun = "self_CCSjob",
+    memory_reserved = "20G",
+    cpu_reserved = 10,
+    paramMat = data.frame(
+      miFile = "data/subsets/treesWithAtOs/Os.mi",
+      geneIDfile = "data/subsets/treesWithAtOs/Os_geneIDs.RDS",
+      refOrthosFile =  "data/subsets/treesWithAtOs/Os_AtOs11_geneIDs.RDS",
+      outFile = "data/subsets/treesWithAtOs/Os_selfCCS.RDS" ,
+      cores = 10
+    )
+  )
+) -> fobj
 ###
 #
 # submit flow
