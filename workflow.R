@@ -10,7 +10,6 @@ library(flowr)
 opts_flow$set(module_cmds = "source /etc/profile.d/modules.sh\nmodule load R/3.3.1")
 
 
-
 source("R/flowrUtils.R")
 
 
@@ -114,41 +113,123 @@ fobj <- Rflow(flowname = "convertTrees",
                    fun = "mergeTreeDataJob",
                    paramMat = data.frame(outDir = 'data/treeData') ) )
 
+#####
+#
+# treesWithAtOs
+#
+
+source("Rjobs/calcMI.R")
+
+  
+fobj <- 
+  Rflow(
+    flowname = "CoExCorr",
+    subFlow(
+      prefix="At_",
+      makeMI_flow(
+        expMatFile = "data/expMat/PODC_At.RDS",
+        outDir = "data/subsets/treesWithAtOs",
+        geneIDsubsetFile = "data/subsets/treesWithAtOs/At_geneIDs.RDS",
+        prefix = "At",
+        arraySize = 32,
+        mem = "3G")
+    ), 
+    subFlow(
+      prefix="Os_",
+      makeMI_flow(
+        expMatFile = "data/expMat/PODC_Os.RDS",
+        outDir = "data/subsets/treesWithAtOs",
+        geneIDsubsetFile = "data/subsets/treesWithAtOs/Os_geneIDs.RDS",
+        prefix = "Os",
+        arraySize = 16,
+        mem = "1G")
+    )
+  )
+
+#
+# At Os CCS
+#
+
+Rflow(
+  flowname = "CoExCorr",
+  Rjob(
+    jobName = "getAtOs11refs",
+    source = "Rjobs/CLR_CCS.R", 
+    fun = "get11orthos",
+    paramMat = data.frame( 
+      orthoFile = "indata/At_Os_orthologs.txt",
+      geneIDfile1 = "data/subsets/treesWithAtOs/At_geneIDs.RDS",
+      geneIDfile2 = "data/subsets/treesWithAtOs/Os_geneIDs.RDS",
+      refOrthosFile1 =  "data/subsets/treesWithAtOs/At_AtOs11_geneIDs.RDS",
+      refOrthosFile2 = "data/subsets/treesWithAtOs/Os_AtOs11_geneIDs.RDS"
+    )
+  ),
+  Rjob( 
+    dep_type = "serial", 
+    prev_jobs = "getAtOs11refs", 
+    jobName = "calcAtOsCCS",
+    source = "Rjobs/CLR_CCS.R",
+    fun = "MI_CLR_CCSjob",
+    memory_reserved = "50G",
+    cpu_reserved = 20,
+    paramMat = data.frame(
+      mi_file1 = "data/subsets/treesWithAtOs/At.mi",
+      mi_file2 = "data/subsets/treesWithAtOs/Os.mi",
+      geneIDfile1 = "data/subsets/treesWithAtOs/At_geneIDs.RDS",
+      geneIDfile2 = "data/subsets/treesWithAtOs/Os_geneIDs.RDS",
+      refOrthosFile1 =  "data/subsets/treesWithAtOs/At_AtOs11_geneIDs.RDS",
+      refOrthosFile2 = "data/subsets/treesWithAtOs/Os_AtOs11_geneIDs.RDS",
+      outFile = "data/subsets/treesWithAtOs/AtOs_CCS.RDS" ,
+      cores = 20)
+  )
+) -> fobj
+
+sample(readRDS(refOrthosFile2),size = 10)
 
 ###
 #
 # submit flow
 #
 fobj <- submit_flow(fobj,execute = F)
-fobj <- submit_flow(fobj,execute = T)
+fobj <- submit_flow(fobj,execute = T, plot=F)
+
 status(fobj)
 # kill(fobj)
 system("sacct")
 
 plot_flow(fobj)
+
+####
+#
+# Example of rerun part of a job
+#
+
+# if fobj is available:
+rerun(fobj, start_from = "calcAtOsCCS",kill = F)
+# if fobj not available
+retVal <- rerun("/mnt/users/lagr/flowr/runs/CoExCorr-foo-20170222-19-52-41-OJ5qPXNG", start_from = "calcAtOsCCS",kill = F)
+
+fobj <- retVal[[1]]
+fobj@jobs$calcAtOsCCS@cmds
+####
+#
+#  example: using the startFromJob function
+#
+
+# library(magrittr)
+# 
+# startFromJob(flowList = fl,startJob = "Os_prepMI")
+# fobj <- 
+#   fl %>%
+#   startFromJob("Os_prepMI") %>%
+#   Rflow( flowname = "CoExCorr" )
+
 ####
 #
 #  example: resubmit from job 3
 #
 
 # fobj2 <- submit_flow(fobj,execute = T, .start_jid = 3) # execute
-
-fobj <- Rflow(flowname = "PODC_At_Subsets",
-
-              # PODC_At_HalfSubsetsJob3
-              Rjob(#prev_jobs = "PODC_At_HalfSubsetsJob2", dep_type = "gather",
-                sub_type = "scatter",
-                   source = "Rjobs/PODC_At_Subsets.R",
-                   fun = "PODC_At_HalfSubsetsJob3",
-                   paramMat = data.frame(subset_idx = 1:10)),
-
-              # PODC_At_HalfSubsetsJob4
-              Rjob(#prev_jobs = "PODC_At_HalfSubsetsJob1", dep_type = "burst",
-                sub_type = "scatter",
-                   source = "Rjobs/PODC_At_Subsets.R",
-                   fun = "PODC_At_HalfSubsetsJob4",
-                   paramMat = data.frame(subset_idx = 1:10))
-)
 
 # it works even with the dependencies because the fobj contains the jobIDs for
 # the previous job..
