@@ -118,13 +118,14 @@ onlyTheseJobs <- function(flowList, jobs){
   flowmat <- flowList$flowmat[flowList$flowmat$jobname %in% jobs, ]
   
   # fix dependencies
-  flowdef$prev_jobs[flowdef$prev_jobs=="none"] <- character(0)
-  oldDeps <- setNames( strsplit(flowdef$prev_jobs,","),
+  
+  # split the old dependencies and replace "none" with ""
+  oldDeps <- setNames( strsplit( sub("^none$","",flowdef$prev_jobs),","),
                        flowdef$jobname)
   # remove non-existant dependencies
   newDeps <- lapply(oldDeps, function(x) {x[x %in% jobs]})
   
-  # fix dependency type
+  # fix dependency types
   for(i in seq_along(flowdef$jobname)){
     job = flowdef$jobname[i]
     if(!identical(oldDeps[[job]],newDeps[[job]])){
