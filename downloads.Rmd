@@ -3,12 +3,17 @@ title: "Data sources"
 output: html_document
 ---
 
+```{r loadLibraries, message=FALSE, include=FALSE}
+library(readxl)
+```
+
 ```{r defFun, echo=F}
-myDownload <- function(URL,dstPath="indata"){
-  dstFile <- file.path(dstPath, basename(URL))
+myDownload <- function(URL,
+                       dstPath = "indata",
+                       dstFile = file.path(dstPath, basename(URL))){
   if( !file.exists(dstFile) )
     download.file(URL, dstFile,quiet = T)
-  cat(sprintf("* [%s](%s)\n",basename(URL),URL))
+  cat(sprintf("* [%s](%s)\n",basename(dstFile),URL))
   return(dstFile)
 }
 
@@ -20,8 +25,18 @@ Expression matrices:
 
 ```{r PODCexpMat, echo=F, results='asis'}
 
-PODCexpMatURLs <- c("http://plantomics.mind.meiji.ac.jp/podc/data/arabidopsis_thaliana_fpkm.tsv.gz",
-                    "http://plantomics.mind.meiji.ac.jp/podc/data/oryza_sativa_fpkm.tsv.gz")
+PODCexpMatURLs <- 
+  c( # "http://plantomics.mind.meiji.ac.jp/podc/data/zea_mays_fpkm.tsv.gz",
+    "http://plantomics.mind.meiji.ac.jp/podc/data/arabidopsis_thaliana_fpkm.tsv.gz",
+    "http://plantomics.mind.meiji.ac.jp/podc/data/oryza_sativa_fpkm.tsv.gz",
+    "http://plantomics.mind.meiji.ac.jp/podc/data/solanum_lycopersicum_fpkm.tsv.gz",
+    "http://plantomics.mind.meiji.ac.jp/podc/data/sorghum_bicolor_fpkm.tsv.gz",
+    "http://plantomics.mind.meiji.ac.jp/podc/data/vitis_vinifera_fpkm.tsv.gz",
+    "http://plantomics.mind.meiji.ac.jp/podc/data/medicago_truncatula_fpkm.tsv.gz",
+    "http://plantomics.mind.meiji.ac.jp/podc/data/solanum_tuberosum_fpkm.tsv.gz",
+    "http://plantomics.mind.meiji.ac.jp/podc/data/glycine_max_fpkm.tsv.gz",
+    "http://plantomics.mind.meiji.ac.jp/podc/data/nicotiana_tabacum_fpkm.tsv.gz"
+    )
 
 invisible( sapply(PODCexpMatURLs, myDownload) )
 
@@ -31,14 +46,83 @@ Sample metadata:
 
 ```{r PODCmetadata, echo=F, results='asis'}
 
-PODCmetadataURLs <- c("http://plantomics.mind.meiji.ac.jp/podc/data/arabidopsis_thaliana_sample.xls",
-                    "http://plantomics.mind.meiji.ac.jp/podc/data/oryza_sativa_sample.xls")
+PODCmetadataURLs <- 
+  c("http://plantomics.mind.meiji.ac.jp/podc/data/arabidopsis_thaliana_sample.xls",
+    "http://plantomics.mind.meiji.ac.jp/podc/data/oryza_sativa_sample.xls",
+    "http://plantomics.mind.meiji.ac.jp/podc/data/solanum_lycopersicum_sample.xls",
+    "http://plantomics.mind.meiji.ac.jp/podc/data/sorghum_bicolor_sample.xls",
+    "http://plantomics.mind.meiji.ac.jp/podc/data/vitis_vinifera_sample.xls",
+    "http://plantomics.mind.meiji.ac.jp/podc/data/medicago_truncatula_sample.xls",
+    "http://plantomics.mind.meiji.ac.jp/podc/data/solanum_tuberosum_sample.xls",
+    "http://plantomics.mind.meiji.ac.jp/podc/data/glycine_max_sample.xls",
+    "http://plantomics.mind.meiji.ac.jp/podc/data/nicotiana_tabacum_sample.xls",
+    "http://plantomics.mind.meiji.ac.jp/podc/data/zea_mays_sample.xls"    
+    )
 
 PODCmetadataFiles <- sapply(PODCmetadataURLs, myDownload)
 
 ```
 
 Note: The "readxl" package couldn't open the .xls files, but managed to open .xlsx files. The .xls files therefore had to be converted .xlsx, which was done "manually". For convenience xls files were converted to .RDS files
+
+### Download RNAseq data from EBI
+
+Since the Zm and Gm data used in PODC was a different genome annotation than the one at Ensembl, expression data for the same samples is downloaded from EBI using the API described at http://www.ebi.ac.uk/fg/rnaseq/api/ 
+
+
+```{r downloadRNAseqFromEBI, echo=FALSE, results='asis'}
+source("R/ebiRNAseqAPI.R")
+
+
+
+downloadRNAseq <- function(organism,dstPath,PODCmetadataFile = paste0("indata/",organism,"_sample.xlsx")){
+  studyDataFile <- file.path(dstPath,"studyData.tsv")
+  #
+  # get study data which include the url for the expression data
+  #
+  if(!file.exists(studyDataFile)){
+    # read the PODC sample data
+    sampleData <- read_excel(PODCmetadataFile,col_types = rep("text",15))
+    
+    # get all studies with RNAseq data for Zea mays
+    studyData <- RNAseq_getStudiesByOrganism( organism )
+    
+    studyData <- studyData[studyData$STUDY_ID %in% sampleData$Study, ]
+  
+    studyData <- studyData[studyData$STATUS == "Complete", ]
+    
+    cat( "Found expression data for",sum(sampleData$Study %in% studyData$STUDY_ID),
+         "of",nrow(sampleData),"samples\n")
+  
+    dir.create(dstPath)
+    write_tsv(studyData,path = studyDataFile)
+  } else {
+    studyData <- read_tsv(studyDataFile,col_types = cols())
+  }
+  
+  
+  # the fpkm url is not among the data but it has the same path as the CRAM url
+  FPKMurls <- studyData$GENES_FPKM_COUNTS_FTP_LOCATION
+  dstFiles <- file.path(dstPath,paste(studyData$STUDY_ID,basename(FPKMurls),sep = "."))
+  
+  #
+  # Download
+  #
+  invisible(mapply(
+    FUN = myDownload, 
+    URL = FPKMurls, 
+    dstFile = dstFiles))
+  
+}
+
+invisible(mapply(
+  FUN = downloadRNAseq,
+  organism=c("glycine_max","zea_mays"),
+  dstPath=c("indata/RNAseqGm","indata/RNAseqZm")
+))
+
+
+```
 
 
 ### Ensembl BioMart

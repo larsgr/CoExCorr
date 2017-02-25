@@ -15,19 +15,59 @@ source("R/flowrUtils.R")
 
 ####
 #
-# processExpMat PODC
+# processExpMat
 #
 
-fobj <- Rflow(flowname = "processExpMat",
-              # processExpMat_PODC_Os
-              Rjob(source = "Rjobs/processExpMat.R",
-                   fun = "processExpMat_PODC_Os" ),
-              
-              # processExpMat_PODC_At
-              Rjob(source = "Rjobs/processExpMat.R",
-                   fun = "processExpMat_PODC_At" )
-              )
 
+fobj <- Rflow(
+  flowname = "CoExCorr",
+  
+  # #processExpMat_PODC(spc)
+  # Rjob(
+  #   jobName = "processExpMat_Os",
+  #   source = "Rjobs/processExpMat.R",
+  #   fun = "processExpMat_PODC",
+  #   paramMat = data.frame( spc = "Os" )
+  # ),
+  # 
+  # # processExpMat_PODC(spc)
+  # Rjob(
+  #   jobName = "processExpMat_At",
+  #   source = "Rjobs/processExpMat.R",
+  #   fun = "processExpMat_PODC",
+  #   paramMat = data.frame( spc = "At" )
+  # ),
+  # 
+  # # processExpMat_ebi( inPath, outFile)
+  # Rjob(
+  #   jobName = "processExpMat_Zm",
+  #   source = "Rjobs/processExpMat.R",
+  #   fun = "processExpMat_ebi",
+  #   paramMat = data.frame( 
+  #     inPath = "indata/RNAseqZm", 
+  #     outFile = "data/expMat/EBI_Zm.RDS"
+  #   ) 
+  # ),
+
+  # processExpMat_PODC(spc)
+  Rjob(
+    jobName = "processExpMat_Sl",
+    source = "Rjobs/processExpMat.R",
+    fun = "processExpMat_PODC",
+    paramMat = data.frame( spc = "Sl" )
+  ),
+  
+  # processExpMat_ebi( inPath, outFile)
+  Rjob(
+    jobName = "processExpMat_Gm",
+    source = "Rjobs/processExpMat.R",
+    fun = "processExpMat_ebi",
+    paramMat = data.frame( 
+      inPath = "indata/RNAseqGm", 
+      outFile = "data/expMat/EBI_Gm.RDS"
+    ) 
+  )  
+)
 
 ####
 #
@@ -237,9 +277,9 @@ plot_flow(fobj)
 #
 # Example of rerun part of a job
 #
-
+fobj@jobs$processExpMat_Sl
 # if fobj is available:
-rerun(fobj, start_from = "calcAtOsCCS",kill = F)
+rerun(fobj, start_from = "processExpMat_Sl", select = "processExpMat_Sl",kill = F)
 # if fobj not available
 retVal <- rerun("/mnt/users/lagr/flowr/runs/CoExCorr-foo-20170222-19-52-41-OJ5qPXNG", start_from = "calcAtOsCCS",kill = F)
 
