@@ -127,58 +127,35 @@ invisible(mapply(
 
 ### Ensembl BioMart
 
-* At_Os_orthologs.txt - At:Os orthologs
-* Os_At_orthologs.txt - Os:At orthologs
+Gene orthology between each pair of species are downloaded from Ensembl biomart:
 
-```{r biomart, eval=F, include=F}
-library(biomaRt)
+```{r biomartOrthos, echo=FALSE, results='asis'}
+source("R/ensemblBiomartTools.R")
 
-At_Os_ortho_file <- "../indata/At_Os_orthologs.txt"
+# get all possible spc pairs
+spcPairs <- expand.grid(names(spc2ensemblSpcID), names(spc2ensemblSpcID), stringsAsFactors = F)
+# remove redundant pairs
+spcPairs <- spcPairs[spcPairs$Var1 < spcPairs$Var2,]
 
-# download from biomart if not already downloaded
-if( !file.exists(At_Os_ortho_file) ){
-  library(biomaRt)
-  
-  # listMarts(host="plants.ensembl.org")
-  
-  # use arabidopsis database
-  ensembl <- useMart("plants_mart",dataset="athaliana_eg_gene", host="plants.ensembl.org")
-  
-  # get At gene id and corresponding Os ortholog. Filter: only genes with Os homolog
-  At_Os_orthos <- getBM(attributes=c("ensembl_gene_id", 
-                                     "osativa_eg_homolog_ensembl_gene",
-                                     "osativa_eg_homolog_orthology_type",
-                                     "osativa_eg_homolog_subtype",
-                                     "osativa_eg_homolog_perc_id",
-                                     "osativa_eg_homolog_perc_id_r1"), 
-                        filters = 'with_osativa_eg_homolog', values = T, mart = ensembl)
-
-  # change the column names
-  colnames(At_Os_orthos) <- c("At","Os","otype","MRCA","PID","PIDr")  
-  # convert orthology type
-  oTypes <- c(ortholog_many2many = "N:N", ortholog_one2many = "1:N", ortholog_one2one = "1:1")
-  At_Os_orthos$otype <- oTypes[At_Os_orthos$otype]
-
-  write.table(At_Os_orthos,file = At_Os_ortho_file, row.names = F,quote = F,sep="\t")
+# create directory
+orthoPath <- "indata/orthologs"
+if(!file.exists(orthoPath)){
+  dir.create(orthoPath)
 }
 
-#
-# Get Os:At orthologs also
-#
-Os_At_ortho_file <- "../indata/Os_At_orthologs.txt"
 
-# download from biomart if not already downloaded
-if( !file.exists(Os_At_ortho_file) ){
+for( i in 1:nrow(spcPairs)){
+  spc1 <- spcPairs$Var1[i]
+  spc2 <- spcPairs$Var2[i]
+  orthoFile <- file.path(orthoPath,paste0(spc1,"_",spc2,"_orthologs.txt"))
+
+  if( !file.exists(orthoFile) ){
+    orthos <- downloadOrthosEnsembl(spc1, spc2)
+    write.table(orthos,file = orthoFile, row.names = F,quote = F,sep="\t")
+  }
+
+  cat(sprintf("* %s\n",basename(orthoFile), spc1, spc2))
   
-  ensembl <- useMart("plants_mart",dataset="osativa_eg_gene", host="plants.ensembl.org")
-  
-  # get Os gene id and corresponding At ortholog. Filter: only genes with At homolog
-  Os_At_orthos <- getBM(attributes=c("ensembl_gene_id", "athaliana_eg_homolog_ensembl_gene","athaliana_eg_homolog_subtype"), 
-                        filters = 'with_athaliana_eg_homolog', values = T, mart = ensembl)
-  
-  colnames(Os_At_orthos) <- c("Os","At","MRCA")  
-  
-  write.table(Os_At_orthos,file = Os_At_ortho_file, row.names = F,quote = F,sep="\t")
 }
 
 ```
