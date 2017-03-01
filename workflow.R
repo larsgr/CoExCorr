@@ -7,15 +7,14 @@ module("load slurm")
 library(flowr)
 
 # Set the module_cmds option
-opts_flow$set(module_cmds = "source /etc/profile.d/modules.sh\nmodule load R/3.3.1")
-
+opts_flow$set(module_cmds = "source /etc/profile.d/modules.sh\nmodule load R/3.3.2")
 
 source("R/flowrUtils.R")
 
 
-####
+## processExpMat ####
 #
-# processExpMat
+# 
 #
 
 
@@ -48,7 +47,7 @@ fobj <- Rflow(
   #     outFile = "data/expMat/EBI_Zm.RDS"
   #   ) 
   # ),
-
+  
   # processExpMat_PODC(spc)
   Rjob(
     jobName = "processExpMat_Sl",
@@ -69,23 +68,23 @@ fobj <- Rflow(
   )  
 )
 
-####
+## PODC_At_Subsets ####
 #
-# PODC_At_Subsets
+# 
 #
 
 fobj <- Rflow(flowname = "PODC_At_Subsets",
-
+              
               # PODC_At_HalfSubsetsJob1
               Rjob(source = "Rjobs/PODC_At_Subsets.R",
                    fun = "PODC_At_HalfSubsetsJob1" ),
-
+              
               # PODC_At_HalfSubsetsJob2
               Rjob(prev_jobs = "PODC_At_HalfSubsetsJob1", dep_type = "burst", sub_type = "scatter",
                    source = "Rjobs/PODC_At_Subsets.R",
                    fun = "PODC_At_HalfSubsetsJob2",
                    paramMat = expand.grid(subset_idx = 1:10, invertSubset = c(T,F)) ),
-
+              
               # PODC_At_HalfSubsetsJob3
               Rjob(prev_jobs = "PODC_At_HalfSubsetsJob2", dep_type = "gather", sub_type = "scatter",
                    source = "Rjobs/PODC_At_Subsets.R",
@@ -97,7 +96,7 @@ fobj <- Rflow(flowname = "PODC_At_Subsets",
                    source = "Rjobs/PODC_At_Subsets.R",
                    fun = "PODC_At_HalfSubsetsJob4",
                    paramMat = data.frame(subset_idx = 1:10))
-              )
+)
 
 
 flowList = makePODC_AtOs_flow()
@@ -121,9 +120,9 @@ fobj <- Rflow( flowname = "PODC_Os_Subsets", makePODC_Os_Subsets_flow() )
 #   startFromJob(c("PODC_Os_HalfSubsetsJob3","PODC_Os_HalfSubsetsJob4"))
 # fobj <- Rflow( flowname = "rerunPODC_Os_Subsets", x )
 
-####
+## PODC_AtOs ####
 #
-# PODC_AtOs
+# 
 #
 
 source("Rjobs/PODC_AtOs.R")
@@ -131,12 +130,12 @@ fobj <- Rflow( flowname = "PODC_AtOs", makePODC_AtOs_flow())
 
 ####
 #
-# convertTrees
+# convertTrees ####
 #
 
 arraySize = 12
 fobj <- Rflow(flowname = "convertTrees",
-
+              
               # extractTreeDataJob
               Rjob(sub_type = "scatter",
                    source = "Rjobs/extractTreeDataJob.R",
@@ -144,7 +143,7 @@ fobj <- Rflow(flowname = "convertTrees",
                    paramMat = data.frame(arrayIdx = 1:arraySize,
                                          arraySize = arraySize,
                                          outDir = 'data/treeData') ),
-
+              
               # mergeTreeDataJob
               Rjob(prev_jobs = "extractTreeDataJob",
                    dep_type = "gather",
@@ -153,14 +152,14 @@ fobj <- Rflow(flowname = "convertTrees",
                    fun = "mergeTreeDataJob",
                    paramMat = data.frame(outDir = 'data/treeData') ) )
 
-#####
+## treesWithAtOs ####
 #
-# treesWithAtOs
+# 
 #
 
 source("Rjobs/calcMI.R")
 
-  
+
 fobj <- 
   Rflow(
     flowname = "CoExCorr",
@@ -224,9 +223,39 @@ Rflow(
   )
 ) -> fobj
 
-#####
+
+## Full MI matrices ####
 #
-# self CCS
+# 
+#
+source("subflows/makeMIandCCSflow.R")
+library(tibble)
+
+dir.create("data/CCS",showWarnings = F)
+
+MIFlowDef <- tribble(
+  ~spc, ~cpuReq, ~memReq, ~expMatFile,
+  "Gm", 46,      "4G",    "data/expMat/EBI_Gm.RDS",
+  "Zm", 50,      "10G",   "data/expMat/EBI_Zm.RDS",
+  "At", 30,      "3.5G",  "data/expMat/PODC_At.RDS",
+  "Os", 22,      "2G",    "data/expMat/PODC_Os.RDS",
+  "Sl", 22,      "2.5G",  "data/expMat/PODC_Sl.RDS"
+)
+
+fl <- makeMIandCCSflow(MIFlowDef)
+
+fobj <- Rflow(flowname = "MI_CCS", fl)
+
+fobj <- 
+  fl %>% 
+  startFromJob( startJob = "ZmcalcMI")  %>% 
+  Rflow(flowname = "ZmRestMI_CCS" ) %>% 
+  plot_flow()
+
+
+## self CCS ####
+#
+# 
 #
 
 Rflow(
@@ -260,10 +289,18 @@ Rflow(
     )
   )
 ) -> fobj
-###
+
+
+
+
+##  submit flow ####
 #
-# submit flow
+# 
 #
+
+opts_flow$set(verbose=2)
+opts_flow$get()
+
 fobj <- submit_flow(fobj,execute = F)
 fobj <- submit_flow(fobj,execute = T, plot=F)
 
@@ -273,18 +310,30 @@ system("sacct")
 
 plot_flow(fobj)
 
-####
+## resurrect fobj ####
+#
+#
+fobj <- flowr:::read_fobj("/mnt/users/lagr/flowr/runs/restMI_CCS-foo-20170301-14-10-33-UOaq6i3n")
+
+## example get jobIDs ####
+#
+# Example how to get jobIDs for donwstream jobs in flowList
+#
+jobs <- setdiff( getDownstreamFlowJobs(fl,c("ZmcalcMI")), "ZmcalcMI")
+map(fobj@jobs[jobs], ~ .x@id) %>% unlist() %>% paste(collapse=",")
+
+
+## Example of rerun ####
 #
 # Example of rerun part of a job
 #
-fobj@jobs$processExpMat_Sl
+
 # if fobj is available:
 rerun(fobj, start_from = "processExpMat_Sl", select = "processExpMat_Sl",kill = F)
 # if fobj not available
 retVal <- rerun("/mnt/users/lagr/flowr/runs/CoExCorr-foo-20170222-19-52-41-OJ5qPXNG", start_from = "calcAtOsCCS",kill = F)
 
 fobj <- retVal[[1]]
-fobj@jobs$calcAtOsCCS@cmds
 ####
 #
 #  example: using the startFromJob function

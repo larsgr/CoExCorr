@@ -1,12 +1,34 @@
-# Rjob generates multiple commandline calls to function "fun" which is sourced 
-# from "source" using the parameters in "paramMat". One call for each row.
+#' Create flowr job for R script
+#' 
+#' Rjob generates multiple commandline calls to function "fun" which is sourced 
+#' from "source" using the parameters in "paramMat". One call for each row.
+#'
+#' @param source .R file to be source that contains the function to be called
+#' @param fun name of function to be called
+#' @param paramMat data.frame with arguments to the function. Each
+#' @param jobName name of job
+#' @param prev_jobs name of job
+#' @param dep_type "none", "serial", "burst" or "merge"
+#' @param sub_type "serial": function call will be run after each other, 
+#'                 or "scatter": each function call will be run in parallel
+#' @param cpu_reserved number of CPU's per job
+#' @param memory_reserved memory to reserve for this job. e.g. "4G" or "200M"
+#' @param walltime 
+#' @param queue 
+#' @param platform 
+#' @param startSleep number of seconds to delay at the start of each array job
+#'
+#' @return list with two data.frames (flowmat and flowdef)
+#' @export
+#'
 Rjob <- function( source, fun, paramMat=data.frame(), jobName=fun,
                   prev_jobs="none", dep_type="none", sub_type="serial",
                   cpu_reserved = 1, 
                   memory_reserved = "4G",
                   walltime = "10-00:00:00",
                   queue = "verysmallmem,cigene",
-                  platform = "slurm" ){
+                  platform = "slurm",
+                  startSleep = 0){
   
   # convert any factors to strings in paramMat
   paramMat <- rapply(paramMat, as.character, classes="factor", how="replace")
@@ -34,12 +56,23 @@ Rjob <- function( source, fun, paramMat=data.frame(), jobName=fun,
   sourceCallStr <- capture.output(call("source",source))
   
   # Glue them together and add quotes 
-  exprStr <- shQuote(paste(sourceCallStr,funCallStr,sep = "; "))  
+  exprStr <- shQuote(paste(sourceCallStr,funCallStr,sep = "; "))
+  
+  # generate sleep command in the beginning
+  if(startSleep == 0){
+    sleepCmd <- ""
+  } else {
+    if(length(startSleep) != 1 | !is.numeric(startSleep) | startSleep < 0){
+      stop("startSleep must be positive numeric of length 1")
+    }
+    sleepCmd <- paste("sleep", (0:(length(exprStr)-1))*startSleep ,"&& ")
+  }
   
   flowmat <- data.frame( stringsAsFactors = F,
                          samplename = "foo",
                          jobname = jobName,
-                         cmd = paste0("cd ",getwd()," && ",  # execute in project directory
+                         cmd = paste0(sleepCmd,
+                                      "cd ",getwd()," && ",  # execute in project directory
                                       "Rscript -e ", exprStr))
   
   flowdef <- data.frame(stringsAsFactors = F,
@@ -59,6 +92,10 @@ Rjob <- function( source, fun, paramMat=data.frame(), jobName=fun,
 # Include this/these job(s) and all downstream jobs, 
 # remove up-stream dependencies
 startFromJob <- function(flowList, startJob){
+  subsetFlowJobs(flowList, getDownstreamFlowJobs(flowList, startJob))
+}
+
+getDownstreamFlowJobs <- function(flowList, startJob){
   # check if startJob exists
   if( !all(startJob %in% flowList$flowdef$jobname) )
     stop("Given startJob(s) not found in flowList: ",
@@ -101,29 +138,30 @@ startFromJob <- function(flowList, startJob){
     walkDeps(job)
   }
   
-  # remove jobs dependencies that are not to be included
-  return( onlyTheseJobs(flowList,jobs = names(jobsIncluded)[jobsIncluded]) )
+  # return name of jobs
+  return( names(jobsIncluded)[jobsIncluded] )
 }
 
-# remove all but these jobs. Also remove dependencies.
-onlyTheseJobs <- function(flowList, jobs){
-  # check if jobs exists
-  if( !all(jobs %in% flowList$flowdef$jobname) )
-    stop("Given startJob(s) not found in flowList: ",
-         paste(jobs[!(jobs %in% flowList$flowdef$jobname)],collapse=", "),"")
+
+
+#' Fix dependencies in flowList
+#' 
+#' Remove dependencies to jobs that are not in the list and alter the 
+#' dependency types of affected jobs if needed
+#'
+#' @param flowList list containing flowmat and flowdef tables
+#'
+#' @return flowList
+fixFlowDependencies <- function(flowList){
   
-  
-  # create reduced flowdef and flowmat
-  flowdef <- flowList$flowdef[flowList$flowdef$jobname %in% jobs, ]
-  flowmat <- flowList$flowmat[flowList$flowmat$jobname %in% jobs, ]
-  
-  # fix dependencies
+  flowdef <- flowList$flowdef
+  flowmat <- flowList$flowmat
   
   # split the old dependencies and replace "none" with ""
   oldDeps <- setNames( strsplit( sub("^none$","",flowdef$prev_jobs),","),
                        flowdef$jobname)
   # remove non-existant dependencies
-  newDeps <- lapply(oldDeps, function(x) {x[x %in% jobs]})
+  newDeps <- lapply(oldDeps, function(x) {x[x %in% flowdef$jobname]})
   
   # fix dependency types
   for(i in seq_along(flowdef$jobname)){
@@ -164,6 +202,36 @@ onlyTheseJobs <- function(flowList, jobs){
   return(list(flowdef=flowdef,flowmat=flowmat))
 }
 
+
+
+#' Subset jobs in flowList
+#' 
+#' Removes all jobs from flowList that is not in the given set of jobs
+#'
+#' @param flowList list containing flowmat and flowdef tables
+#' @param jobs character vector with names of jobs to include
+#' @param fixDeps logical, if TRUE then fixFlowDependencies() is called after removing jobs
+#'
+#' @return flowList
+subsetFlowJobs <- function(flowList, jobs, fixDeps=T){
+  # check if jobs exists
+  if( !all(jobs %in% flowList$flowdef$jobname) )
+    stop("Given job(s) not found in flowList: ",
+         paste(jobs[!(jobs %in% flowList$flowdef$jobname)],collapse=", "),"")
+  
+  
+  # create reduced flowdef and flowmat
+  retFlowList = list(
+    flowdef = flowList$flowdef[flowList$flowdef$jobname %in% jobs, ],
+    flowmat = flowList$flowmat[flowList$flowmat$jobname %in% jobs, ]
+  )
+  
+  if(fixDeps){
+    return( fixFlowDependencies(retFlowList) )
+  } else {
+    return( retFlowList )
+  }
+}
 
 # combines lists containing flowmat and flowdef tables by rbind
 flowbind <- function(...){

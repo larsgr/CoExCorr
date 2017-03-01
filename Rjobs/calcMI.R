@@ -1,5 +1,8 @@
 # MI calculation
 
+library(purrr)
+
+
 # write expression matrix in the format used for mi calculation
 writeTempExpMat <- function(expMat, filename){
   cat("writing",filename,"...\n")
@@ -11,23 +14,34 @@ writeTempExpMat <- function(expMat, filename){
 # Prepare genesubset
 #
 # Load expression matrix
-# extract subset of matrix with given geneIDs
+# (optional) extract subset of matrix with given geneIDs
 # Save expression matrix for MI calculation
 #
-prepMI <- function(expMatFile, geneIDsubsetFile, outDir, prefix){
+prepMI <- function(expMatFile, geneIDsubsetFile = "", outDir, prefix){
   
   # create the output path (if not already exists)
   dir.create(outDir,showWarnings = F)
   
-  # load geneIDs to subset
-  geneIDs <- readRDS(geneIDsubsetFile)
-
+  # load expression matrix
   expMat <- readRDS(expMatFile)
   
-  # remove geneIDs that are not in the expression matrix
-  geneIDs <- geneIDs[geneIDs %in% rownames(expMat)]
-  if(length(geneIDs) == 0){
-    stop("geneIDs (",geneIDsubsetFile,")does not match rownames in expMat(",expMatFile,")")
+  if(!(geneIDsubsetFile=="")){
+    # load geneIDs to subset
+    geneIDs <- readRDS(geneIDsubsetFile)
+    
+    # remove geneIDs that are not in the expression matrix
+    geneIDs <- geneIDs[geneIDs %in% rownames(expMat)]
+    if(length(geneIDs) == 0){
+      stop("prepMI(): geneIDs (",geneIDsubsetFile,")does not match rownames in expMat(",expMatFile,")")
+    }
+  } else {
+    # keep all genes.. 
+    geneIDs <- rownames(expMat)
+
+    # save geneIDs as they are not stored in the MI matrix file
+    geneIDsFile <- file.path(outDir,paste0(prefix,"_geneIDs.RDS"))
+    cat("Writing",geneIDsFile,"...\n")
+    saveRDS(geneIDs,geneIDsFile)
   }
 
   # save expression matrix subset
@@ -141,6 +155,7 @@ makeMI_flow <- function(expMatFile,
          source = "Rjobs/calcMI.R",
          fun = "calcMI",
          memory_reserved = mem,
+         startSleep = 10, # wait 10 seconds between starting each job
          paramMat = data.frame(arrayIdx=1:arraySize, arraySize,  prefix, outDir)),
     
     # mergeMI(prefix, outDir)
@@ -162,4 +177,20 @@ estMImem <- function(nGenes,nExp){
 # minutes = ((genes/1K)^2 * samples/1K) * 2~4
 # E.g. 5K genes 0.6K samples => 5^2*0.6 * 2 => 30min (~60min)
 # Warning not very accurate...
+estMItimeMinutes <- function(nGenes,nExp){
+  (nGenes/1000)^2 * (nExp/1000) * 4
+}
+
+# Example: estimate time and memory requirements
+ 
+# expMat <- lapply(expMatFiles,readRDS)
+# 
+# lapply(expMat, function(m){
+#   estMImem(nGenes = nrow(m), nExp = ncol(m))
+# })
+# 
+# sapply(expMat, function(m){
+#   estMItimeMinutes(nGenes = nrow(m), nExp = ncol(m))
+# })
+
 
