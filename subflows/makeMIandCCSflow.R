@@ -8,9 +8,10 @@ library(dplyr) # transmute()
 source("R/flowrUtils.R") # Rjob(), flowbind(), subFlow()
 source("Rjobs/calcMI.R") # makeMI_flow()
 
-# memory required by the CCS calculation is approx 2 * ncol(CCS) * nrow(CCS) * 8 bytes
-# for the largest CCS (GmOs) this is ~37GB
-makeCCSflow <- function(spc1,spc2,memReq="40G",cpuReq=16){
+# memory required by the CCS calculation is approx 5 times the size of the 
+# largest MI matrix.
+# Gm is the largest matrix ~22GB so let's reserve plenty
+makeCCSflow <- function(spc1,spc2,memReq="150G",cpuReq=20){
   flowbind(
     Rjob(
       jobName = "get11refs",

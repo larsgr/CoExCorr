@@ -9,7 +9,9 @@ loadTriMatrix <- function(geneIds,filename){
   n <- length(geneIds)
   m <- matrix(0, ncol = n, nrow = n )
   m[upper.tri(m)] <- scan(file=filename)
-  m <- m + t(m)
+  gc() # free some memory
+  m <- m + t(m) # fill in the other half of the matrix
+  gc() # free some memory
   rownames(m) <- geneIds
   colnames(m) <- geneIds
   return(m)

@@ -10,6 +10,9 @@ MI_CLR_CCSjob <- function(mi_file1, mi_file2,
   source("R/mc_cor.R")
   source("R/loadTriMatrix.R")
   
+  # turn on garbage collection messages
+  invisible(gcinfo(verbose = T))
+  
   myLog <- function(...){
     cat(format(Sys.time(),"[%Y-%m-%d %H:%M:%S]"),...)
   }
