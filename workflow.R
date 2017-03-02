@@ -248,8 +248,9 @@ fobj <- Rflow(flowname = "MI_CCS", fl)
 
 fobj <- 
   fl %>% 
-  startFromJob( startJob = "ZmcalcMI")  %>% 
-  Rflow(flowname = "ZmRestMI_CCS" ) %>% 
+  startFromJob( startJob = c("AtGmcalcCCS", "AtZmcalcCCS", "GmOscalcCCS", "GmSlcalcCCS", 
+                             "GmZmcalcCCS", "OsZmcalcCCS", "SlZmcalcCCS"))  %>% 
+  Rflow(flowname = "RestCCS" ) %>% 
   plot_flow()
 
 
@@ -314,12 +315,14 @@ plot_flow(fobj)
 #
 #
 fobj <- flowr:::read_fobj("/mnt/users/lagr/flowr/runs/restMI_CCS-foo-20170301-14-10-33-UOaq6i3n")
+fobj <- flowr:::read_fobj("/mnt/users/lagr/flowr/runs/ZmRestMI_CCS-foo-20170301-17-51-04-DYc2i1Zu/")
 
 ## example get jobIDs ####
 #
 # Example how to get jobIDs for donwstream jobs in flowList
 #
 jobs <- setdiff( getDownstreamFlowJobs(fl,c("ZmcalcMI")), "ZmcalcMI")
+jobs <- names(fobj@jobs) %>% .[grepl("calcCCS",.)]
 map(fobj@jobs[jobs], ~ .x@id) %>% unlist() %>% paste(collapse=",")
 
 

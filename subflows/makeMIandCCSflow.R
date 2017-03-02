@@ -32,6 +32,7 @@ makeCCSflow <- function(spc1,spc2,memReq="150G",cpuReq=20){
       source = "Rjobs/CLR_CCS.R",
       fun = "MI_CLR_CCSjob",
       memory_reserved = memReq,
+      queue = "hugemem",
       cpu_reserved = cpuReq,
       paramMat = data.frame(
         mi_file1 = paste0("data/MI/",spc1,".mi"),
