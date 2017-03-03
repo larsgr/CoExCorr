@@ -1,4 +1,6 @@
 source("R/phyloXML.R")
+source("R/getGeneNames.R")
+source("R/calcRanks.R")
 library(tidyverse)
 library(ape)
 
@@ -13,87 +15,59 @@ treeData <- readRDS("data/treeData/treeData.RDS")
 names(treeData) <- sprintf("tree%05i",seq_along(treeData))
 
 # load ncbi taxon ID mappings
-taxidTbl <- read_tsv(file = "indata/taxid2taxnames.txt")
+taxidTbl <- read_tsv(file = "indata/taxid2taxnames.txt", col_types = cols())
 
-# tax ids for Os and At
-OsAtTaxid <- c(At=3702,Os=39947)
 
-# Find out which trees that contain both Os and At
-sapply(treeData, function(td){
-  all(OsAtTaxid %in% td$tip.data$taxonID)
-}) -> hasOsAt
+# tax ids for our species
+spc2taxid <- c(
+  At=3702,
+  Os=39947,
+  Gm=3847,
+  Zm=4577,
+  Sl=4081)
 
-# make geneID to treeID mapping
-lapply(OsAtTaxid, function(taxid){
+taxidTbl$spc <- names(spc2taxid)[match(taxidTbl$taxonID,spc2taxid)]
+
+
+# make a table of taxon counts per tree
+taxCount <-
+  treeData %>% 
+  map( ~ as.character(.x$tip.data$taxonID)) %>% 
+  data_frame( taxon = ., treeID = names(.)) %>% 
+  unnest() %>% 
+  with(., table(treeID,taxon)) %>% 
+  as.matrix()
+
+
+# Find out which trees that contain at least two of our species
+hasTwoSpc <- rowSums(taxCount[ ,as.character(spc2taxid)] > 0) >= 2
+
+# make geneID to treeID mapping 
+# For each species
+lapply(spc2taxid, function(taxid){
   
-  lapply(treeData[hasOsAt], function(td){
+  # for each tree get geneIDs for this species
+  lapply(treeData[hasTwoSpc], function(td){
     td$tip.label[td$tip.data$taxonID == taxid]
   }) -> tree_geneID_list
+  
   
   setNames( rep(names(tree_geneID_list),sapply(tree_geneID_list,length)),
             unlist(tree_geneID_list))
   
 }) -> geneID2treeID
 
-
-
-### Get geneIDs for treesWithAtOs ##### 
-# 
-# get the gene IDs for genes in trees with both At and Os that also have 
-# expression data.
-#
-dir.create("data/subsets/treesWithAtOs")
-
-At_geneIDs <- names(geneID2treeID$At)
-At_geneIDs <- At_geneIDs[At_geneIDs %in% rownames(expAt)]
-saveRDS(At_geneIDs, file = "data/subsets/treesWithAtOs/At_geneIDs.RDS")
-
-Os_geneIDs <- names(geneID2treeID$Os)
-Os_geneIDs <- Os_geneIDs[Os_geneIDs %in% rownames(expOs)]
-saveRDS(Os_geneIDs, file = "data/subsets/treesWithAtOs/Os_geneIDs.RDS")
-
-
-
-### load CCS #######
-
-CCS <- readRDS("data/subsets/treesWithAtOs/AtOs_CCS.RDS")
-CCSAt <- readRDS("data/subsets/treesWithAtOs/At_selfCCS.RDS")
-CCSOs <- readRDS("data/subsets/treesWithAtOs/Os_selfCCS.RDS")
-source("R/calcRanks.R")
-
-AtOs11orthos <- lapply(
-  c(At="data/subsets/treesWithAtOs/At_AtOs11_geneIDs.RDS",
-    Os="data/subsets/treesWithAtOs/Os_AtOs11_geneIDs.RDS"),
-  readRDS)
-
-
-
-### Candidate tree ###################
-# find some interresting candidate trees
-# Find a tree with several 1:1 genes
-
-AtOs11Orthos <- readRDS("data/subsets/PODC_AtOs/At_Os_11orthos.RDS")
-as_tibble(table(geneID2treeID$At[AtOs11Orthos$At])) %>% 
-  filter(n>1) %>% .$Var1 -> treesWithSeveral11
-
-
-td <- treeData[[treesWithSeveral11[2]]]
-tree <- as(treeDataToPhylo4(td),"phylo")
-
-
-# add taxon on internal nodes
-tree$node.label <- taxidTbl$taxname[match(td$node.data$taxonID,taxidTbl$taxid)]
-
-# remove all other species
-tr <- drop.tip(phy = tree, tip = which(!(td$tip.data$taxonID %in% OsAtTaxid)))
-
-
-
-### helper functions ####
+## Functions ####
+# Draw  triangles on duplication nodes
+markDupNodes <- function(p4d){
+  isDup <- nodeData(p4d)$isDuplication
+  nodelabels(node = nodeId(p4d,type="internal")[isDup],pch=2, col="red",
+             cex=pmax(nodeData(p4d)$duplicationConfidence[isDup],0.2))
+}
 
 # change tip.label from geneIDs to geneNames
 nameTree <- function(phylo){
-  phylo$tip.label <- getGeneNames(phylo$tip.label)
+  phylo$tip.label <- getGeneNames(geneIDs = phylo$tip.label)
   return(phylo)
 }
 
@@ -104,32 +78,143 @@ nameMat <- function(m){
 }
 
 
-orthoPairRnks <- function(geneIDs, CCS, rename=T){
-  if(!rename)
-    getGeneNames <- function(x){x}
-  
-  # get all combinations of ortholog pairs
-  allOrthoPairs <- 
-    expand.grid(rowGenes=geneIDs[geneIDs %in% rownames(CCS)],
-                colGenes=geneIDs[geneIDs %in% colnames(CCS)],
-                stringsAsFactors = F)
-
-  # get ranks for each pair  
-  allOrthoPairs$rnks <- quickRanks(CCS,allOrthoPairs$rowGenes,allOrthoPairs$colGenes)
-  
-  # spread out like a matrix
-  as_tibble(allOrthoPairs) %>% 
-    mutate( rowGenes = getGeneNames(rowGenes) ) %>% 
-    mutate( colGenes = getGeneNames(colGenes) ) %>% 
-    spread(key = rowGenes,value = rnks)
-}
-
 
 paralogPCC <- function(geneIDs, expMat, rename=T){
   if(!rename)
     nameMat <- function(x){x}
   nameMat(cor(t(expMat[geneIDs[geneIDs %in% rownames(expMat)], ])))
 }
+
+# get phylo from treeData
+getPhylo <- function(p4d){
+  suppressWarnings(
+    as(p4d,"phylo")
+  )
+}
+
+fixTreeData <- function(td){
+  # no factors please
+  td$tip.data$taxonID <- as.integer(as.character(td$tip.data$taxonID))
+  td$node.data$taxonID <- as.integer(as.character(td$node.data$taxonID))
+  
+  # add spc and taxonName to data
+  td$tip.data <- 
+    td$tip.data %>% left_join(taxidTbl, by="taxonID")
+  
+  td$node.data <- 
+    td$node.data %>% left_join(taxidTbl, by="taxonID")
+  
+  # set row names as phylobase likes it
+  row.names(td$tip.data) <- td$tip.label
+  row.names(td$node.data) <- 1:nrow(td$node.data) + nrow(td$tip.data)
+  
+  return(td)
+}
+
+orthoPairRnks <- function(geneIDs, ccs){
+  
+  # get all combinations of ortholog pairs
+  allOrthoPairs <- 
+    expand.grid(rowGenes=geneIDs[geneIDs %in% rownames(ccs)],
+                colGenes=geneIDs[geneIDs %in% colnames(ccs)],
+                stringsAsFactors = F)
+  
+  # get ranks for each pair  
+  allOrthoPairs$rnks <- quickRanks(ccs,allOrthoPairs$rowGenes,allOrthoPairs$colGenes)
+  
+  # spread out like a matrix
+  rankTbl <-
+    as_tibble(allOrthoPairs) %>%
+    spread(key = colGenes,value = rnks)
+  rankMat <- as.matrix(rankTbl[,-1])
+  rownames(rankMat) <- rankTbl$rowGenes
+  
+  return(rankMat)
+}
+
+getRankMat <- function(p4d){
+  geneIDs <- tipLabels(p4d) # !! order of the tips in the plot doesnt match
+  
+  M <- matrix(.0,ncol=nTips(p4d),nrow=nTips(p4d),dimnames=list(geneIDs,geneIDs))
+  
+  for(ccs in CCS){
+    m <- orthoPairRnks(geneIDs, ccs)
+    M[rownames(m),colnames(m)] <- m
+    M[colnames(m),rownames(m)] <- t(m)
+  }
+  return(M)
+}
+
+### load CCS #######
+
+# CCS_old <- readRDS("data/subsets/treesWithAtOs/AtOs_CCS.RDS")
+system.time({
+  CCS <-
+    dir("data/CCS",pattern="CCS",full.names = T) %>% 
+    set_names( sub(".*/(.{4})_.*","\\1",.)) %>% 
+    map( readRDS )
+})
+
+
+
+
+ 
+
+
+
+
+### Candidate tree ###################
+# find some interresting candidate trees
+# Find a tree with several 1:1 genes
+
+AtOs11orthos <- lapply(
+  c(At="data/CCS/At_AtOs11_geneIDs.RDS",
+    Os="data/CCS/Os_AtOs11_geneIDs.RDS"),
+  readRDS)
+
+as_tibble(table(geneID2treeID$At[AtOs11orthos$At])) %>% 
+  filter(n>1) %>% .$Var1 -> treesWithSeveral11
+
+
+# alternative smaller tree for testing
+# treeID <- which(rowSums(taxCount) < 15 &
+#              rowSums(taxCount[,as.character(spc2taxid)]>0) > 2)[1]
+
+
+
+
+# select tree of interrest
+treeID <- treesWithSeveral11[1]
+# convert to p4d
+p4d <- treeDataToPhylo4d(fixTreeData(treeData[[treeID]]))
+# remove tips from species without data
+p4d <- p4d[tipData(p4d)$taxonID %in% spc2taxid[c("At","Os","Zm","Sl")]]
+
+td <- fixTreeData(treeData[[treeID]])
+dim(td$m)
+dim(td$tip.data)
+str(td)
+
+
+# get the phylo version of the tree
+tr <- getPhylo(p4d)
+
+plot.phylo( nameTree(phylo =  tr))
+nodelabels(nodeData(p4d)$taxonName,frame = "none",adj=c(0,0.5),cex=0.6)
+markDupNodes(p4d)
+
+
+## Extract rank matrix ####
+#
+
+M <- getRankMat(p4d)
+heatmap(nameMat(M)^2,Rowv = NA,Colv = NA, scale="none")
+heatmap(nameMat(M)^2,scale="none")
+
+
+
+
+
 
 
 #### load metadata #############
@@ -163,14 +248,12 @@ metaAt <- metaAt[match(colnames(expAt),metaAt$Run),]
 # plot tree
 #
 
-plot.phylo(nameTree(tr),show.node.label = T)
+plot.phylo( nameTree(phylo =  tr))
+nodelabels(nodeData(p4d)$taxonName,frame = "none",adj=c(0,0.5),cex=0.6)
+markDupNodes(p4d)
 
-#
-# Investigate ORS and PRS
-#
 
-orthoPairRnks(tr$tip.label,CCS)
-orthoPairRnks(tr$tip.label,CCSOs)
+
 orthoPairRnks(tr$tip.label,CCSAt)
 
 paralogPCC( tr$tip.label, expOs,rename = F)

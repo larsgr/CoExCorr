@@ -1,4 +1,4 @@
-taxid	taxname
+taxonID	taxonName
 2759	Eukaryota
 2763	Rhodophyta
 2769	Chondrus crispus

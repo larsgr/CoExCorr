@@ -160,6 +160,32 @@ for( i in 1:nrow(spcPairs)){
 
 ```
 
+```{r biomartGeneInfo, echo=FALSE, results='asis'}
+# get spcs
+spcs <- names(spc2ensemblSpcID)
+
+# create directory
+geneInfoPath <- "indata/geneInfo"
+if(!file.exists(geneInfoPath)){
+  dir.create(geneInfoPath)
+}
+
+
+for( spc in spcs){
+  geneInfoFile <- file.path(geneInfoPath,paste0(spc,"_geneInfo.txt"))
+
+  if( !file.exists(geneInfoFile) ){
+    geneInfo <- downloadGeneNamesEnsembl(spc)
+    write.table(geneInfo,file = geneInfoFile, row.names = F,quote = F,sep="\t")
+  }
+
+  cat("*",basename(geneInfoFile),"\n")
+  
+}
+
+```
+
+
 ```{r}
 library(biomaRt)
 

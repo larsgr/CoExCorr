@@ -170,3 +170,11 @@ treeDataToPhylo4 <- function(treeData){
     phylo4(m, edge.length, tip.label)
   })
 }
+
+treeDataToPhylo4d <- function(treeData){
+  with(treeData, {
+    addData( phylo4(m, edge.length, tip.label),
+             tip.data=tip.data,
+             node.data=node.data)
+  })
+}

@@ -314,17 +314,36 @@ plot_flow(fobj)
 ## resurrect fobj ####
 #
 #
-fobj <- flowr:::read_fobj("/mnt/users/lagr/flowr/runs/restMI_CCS-foo-20170301-14-10-33-UOaq6i3n")
+fobj <- flowr:::read_fobj("/mnt/users/lagr/flowr/runs/RestCCS-foo-20170302-12-46-30-KdEy19MJ/")
 fobj <- flowr:::read_fobj("/mnt/users/lagr/flowr/runs/ZmRestMI_CCS-foo-20170301-17-51-04-DYc2i1Zu/")
 
 ## example get jobIDs ####
 #
-# Example how to get jobIDs for donwstream jobs in flowList
+# Example how to get jobIDs from jobNames
 #
-jobs <- setdiff( getDownstreamFlowJobs(fl,c("ZmcalcMI")), "ZmcalcMI")
-jobs <- names(fobj@jobs) %>% .[grepl("calcCCS",.)]
-map(fobj@jobs[jobs], ~ .x@id) %>% unlist() %>% paste(collapse=",")
 
+# get jobNames from flowList
+jobs <- setdiff( getDownstreamFlowJobs(fl,c("ZmcalcMI")), "ZmcalcMI")
+
+# get jobNames from fobj
+jobs <- names(fobj@jobs) %>% .[grepl("Gm",.)]
+
+# get jobIDs
+jobIDs <- map(fobj@jobs[jobs], ~ .x@id)
+
+# sacct for specified jobIDs
+jobStatus <- 
+  jobIDs %>% 
+  unlist() %>% 
+  paste(collapse=",") %>% 
+  paste("sacct -P -l -j",.) %>% 
+  system(intern=T) %>% 
+  paste(collapse = "\n") %>% 
+  read_delim(delim="|")
+
+jobStatus %>% 
+  dplyr::select(JobID,JobName,AllocTRES,State) %>% 
+  mutate( JobName = sub(".*_[0-9]{3}\\.(.*)-1","\\1",JobName))
 
 ## Example of rerun ####
 #
@@ -332,11 +351,9 @@ map(fobj@jobs[jobs], ~ .x@id) %>% unlist() %>% paste(collapse=",")
 #
 
 # if fobj is available:
-rerun(fobj, start_from = "processExpMat_Sl", select = "processExpMat_Sl",kill = F)
-# if fobj not available
-retVal <- rerun("/mnt/users/lagr/flowr/runs/CoExCorr-foo-20170222-19-52-41-OJ5qPXNG", start_from = "calcAtOsCCS",kill = F)
+jobs <- names(fobj@jobs) %>% .[grepl("Gm",.)] # get all jobs with Gm in name
+fobj <- flowr::rerun(fobj, select = jobs,kill = F)[[1]]
 
-fobj <- retVal[[1]]
 ####
 #
 #  example: using the startFromJob function
