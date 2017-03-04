@@ -10,9 +10,6 @@ MI_CLR_CCSjob <- function(mi_file1, mi_file2,
   source("R/mc_cor.R")
   source("R/loadTriMatrix.R")
   
-  # turn on garbage collection messages
-  invisible(gcinfo(verbose = T))
-  
   myLog <- function(...){
     cat(format(Sys.time(),"[%Y-%m-%d %H:%M:%S]"),...)
   }
@@ -23,18 +20,19 @@ MI_CLR_CCSjob <- function(mi_file1, mi_file2,
     geneIDfile=c(geneIDfile1, geneIDfile2),
     refOrthosFile=c(refOrthosFile1,refOrthosFile2),
     FUN = function(miFile,geneIDfile,refOrthosFile){
-      geneIDs <- readRDS(geneIDfile)
+      
       myLog("Reading",miFile,"...\n")
-      mi <- loadTriMatrix(geneIDs, miFile)
+      mi <- loadTriMatrix( geneIds = readRDS(geneIDfile),
+                           filename = miFile)
+      
       myLog("calcCLR...\n")
-      clr <- calcCLR(mi)
+      clr <- calcCLRref( mi, refOrthoIDs = readRDS(refOrthosFile))
 
       # clear some memory
       rm(mi)
       gc()
       
-      myLog("Reading", refOrthosFile, "and filtering...\n")
-      clr[readRDS(refOrthosFile), ]
+      return(clr)      
     }
   ) -> CLR
 

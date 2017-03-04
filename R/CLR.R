@@ -1,8 +1,34 @@
+# Note: This function does not support matrices larger than 2^31 and can use a lot of memory
 calcCLR <- function(mi){
-  miZ <- scale(mi)
-  gc()
-  # pmax does not support long vectors so it is applied columnwise
-  miZ <- apply(miZ,2,pmax,0)^2
-  gc()
+  miZ <- pmax(scale(mi),0)^2
   sqrt(miZ + t(miZ))
+}
+
+# memory efficient implementation
+# returns only the rows given by refOrthoIDs
+calcCLRref <- function(mi, refOrthoIDs){
+  n <- ncol(mi)
+
+  # calculate sum and standard deviation for each column
+  miColMean <- numeric(n)
+  miColSD <- numeric(n)
+  # for each column
+  for(i in 1:n){
+    miColMean[i] <- mean(mi[ ,i])
+    miColSD[i] <- sd(mi[ ,i])
+  }
+  
+  # only need the rows with ref.orthos
+  clr <- mi[refOrthoIDs, ]
+  miColMeanRef <- miColMean[match(refOrthoIDs,rownames(mi))]
+  miColSDRef <- miColSD[match(refOrthoIDs,rownames(mi))]
+
+  for(i in 1:n){
+    # note: clr[ ,i] is the same as mi[refOrthoIDs,i]
+    Zc <- (clr[ ,i] - miColMean[i])/miColSD[i]
+    Zr <- (clr[ ,i] - miColMeanRef)/miColSDRef
+    clr[ ,i] <- sqrt(pmax(Zc,0)^2 + pmax(Zr,0)^2)
+  }
+  
+  return(clr)
 }

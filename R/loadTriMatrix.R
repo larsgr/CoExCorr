@@ -7,12 +7,16 @@
 #'
 loadTriMatrix <- function(geneIds,filename){
   n <- length(geneIds)
-  m <- matrix(0, ncol = n, nrow = n )
-  m[upper.tri(m)] <- scan(file=filename)
-  gc() # free some memory
-  m <- m + t(m) # fill in the other half of the matrix
-  gc() # free some memory
-  rownames(m) <- geneIds
-  colnames(m) <- geneIds
+  m <- matrix(0, ncol = n, nrow = n, dimnames = list(geneIds, geneIds) )
+  inCon <- file(filename, "rt")
+  for(i in 1:(n-1)){
+    # read one line at the time
+    x <- scan(inCon,nlines = 1,quiet = T)
+    # write row-wise
+    m[i+1, 1:i] <- x
+    # write column-wise
+    m[1:i, i+1] <- x
+  }
+  close(inCon)
   return(m)
 }

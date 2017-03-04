@@ -16,21 +16,17 @@ self_CCSjob <- function(miFile,
   
   myLog("Started self_CCSjob\n")
   
-  # load MI matrix, calculate CLR and filter by ref.orthos
-  geneIDs <- readRDS(geneIDfile)
+  # load MI matrix, calculate CLR filtered by ref.orthos
   myLog("Reading",miFile,"...\n")
-  mi <- loadTriMatrix(geneIDs, miFile)
+  mi <- loadTriMatrix( geneIds = readRDS(geneIDfile),
+                       filename = miFile)
+  
   myLog("calcCLR...\n")
-  clr <- calcCLR(mi)
+  clr <- calcCLRref( mi, refOrthoIDs = readRDS(refOrthosFile))
   
   # clear some memory
   rm(mi)
   gc()
-  
-  myLog("Reading", refOrthosFile, "and filtering...\n")
-  clr[readRDS(refOrthosFile), ]
-
-  gc() # garbage collect
   
   myLog("calcCCS...\n")
   CCS <- mc_cor2(clr,

@@ -10,6 +10,7 @@ library(flowr)
 opts_flow$set(module_cmds = "source /etc/profile.d/modules.sh\nmodule load R/3.3.2")
 
 source("R/flowrUtils.R")
+library(tidyverse)
 
 
 ## processExpMat ####
@@ -352,7 +353,7 @@ jobStatus %>%
 
 # if fobj is available:
 jobs <- names(fobj@jobs) %>% .[grepl("Gm",.)] # get all jobs with Gm in name
-fobj <- flowr::rerun(fobj, select = jobs,kill = F)[[1]]
+fobj <- flowr::rerun(fobj, select = jobs,kill = F)
 
 ####
 #
