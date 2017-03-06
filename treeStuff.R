@@ -3,6 +3,11 @@ source("R/getGeneNames.R")
 source("R/calcRanks.R")
 library(tidyverse)
 library(ape)
+library(ggplot2)
+library(reshape2)
+library(RColorBrewer)
+library(plotly)
+
 
 
 ### Load tree and taxonomy data ########
@@ -58,6 +63,22 @@ lapply(spc2taxid, function(taxid){
 }) -> geneID2treeID
 
 ## Functions ####
+
+ggplotlyHeatmap <- function(mData){
+  myPalette <- colorRampPalette(rev(brewer.pal(11, "Spectral")), space="Lab")
+  
+  p <-
+    ggplot(melt(mData),aes(x = Var2, y = Var1, fill = value)) +
+    geom_tile() +
+    scale_fill_gradientn(colours = myPalette(100)) +
+    coord_equal() +
+    theme_bw()
+  
+  ggplotly(p)
+}
+
+
+
 # Draw  triangles on duplication nodes
 markDupNodes <- function(p4d){
   isDup <- nodeData(p4d)$isDuplication
@@ -135,7 +156,7 @@ orthoPairRnks <- function(geneIDs, ccs){
 getRankMat <- function(p4d){
   geneIDs <- tipLabels(p4d) # !! order of the tips in the plot doesnt match
   
-  M <- matrix(.0,ncol=nTips(p4d),nrow=nTips(p4d),dimnames=list(geneIDs,geneIDs))
+  M <- matrix(NA_real_,ncol=nTips(p4d),nrow=nTips(p4d),dimnames=list(geneIDs,geneIDs))
   
   for(ccs in CCS){
     m <- orthoPairRnks(geneIDs, ccs)
@@ -145,22 +166,129 @@ getRankMat <- function(p4d){
   return(M)
 }
 
+getCCSMat <- function(p4d){
+  geneIDs <- tipLabels(p4d) # !! order of the tips in the plot doesnt match
+  
+  M <- matrix(NA_real_,ncol=nTips(p4d),nrow=nTips(p4d),dimnames=list(geneIDs,geneIDs))
+  
+  for(ccs in CCS){
+    m <- ccs[geneIDs[geneIDs %in% rownames(ccs)],geneIDs[geneIDs %in% colnames(ccs)]]
+    M[rownames(m),colnames(m)] <- m
+    M[colnames(m),rownames(m)] <- t(m)
+  }
+  return(M)
+}
+
 ### load CCS #######
 
 # CCS_old <- readRDS("data/subsets/treesWithAtOs/AtOs_CCS.RDS")
+
+myReadRDS <- function(filename){
+  cat(format(Sys.time(),"[%Y-%m-%d %H:%M:%S]"),"Reading",filename,"...\n")
+  readRDS(file = filename)
+}
+
+# takes about 35mins to load and uses 130GB of RAM
 system.time({
   CCS <-
     dir("data/CCS",pattern="CCS",full.names = T) %>% 
     set_names( sub(".*/(.{4})_.*","\\1",.)) %>% 
-    map( readRDS )
+    map( myReadRDS )
 })
 
-
-
-
- 
-
-
+## does not belong here ####
+#  
+# ### load 1:1 ref.orthos
+# refOrthos <- 
+#   dir("data/CCS",pattern="11_geneIDs.RDS",full.names = T) %>% 
+#   set_names( sub(".*/(..)_(..)(..)11_geneIDs.RDS","\\2\\3_\\1",.)) %>% 
+#   map(readRDS) %>% 
+#   split(substr(names(.),1,4)) %>%   # split by species pair
+#   map( ~ setNames(.x, substr(names(.x),6,7) ) ) %>% 
+#   map( ~ as_data_frame(.x) )  # make data_frame of ortholog-pairs for each species pair
+# 
+# rnks <- map2( .x = CCS, .y = refOrthos, 
+#               ~ quickRanks(CCS = .x,spc1genes = .y[[1]], spc2genes = .y[[2]]))
+# 
+# rnks <- list()
+# rnksT <- list()
+# for( spcsPair in names(CCS)){
+#   cat(format(Sys.time(),"[%Y-%m-%d %H:%M:%S]"),"Calculating ranks for",spcsPair,"...\n")
+#   rnks[[spcsPair]] <- 
+#     quickRanks(CCS = CCS[[spcsPair]],
+#                spc1genes = refOrthos[[spcsPair]][[1]],
+#                spc2genes = refOrthos[[spcsPair]][[2]])
+#   rnksT[[spcsPair]] <- 
+#     quickRanksT(CCS = CCS[[spcsPair]],
+#                spc1genes = refOrthos[[spcsPair]][[2]],
+#                spc2genes = refOrthos[[spcsPair]][[1]])
+# }
+# 
+# spcsPairColors <- setNames(rainbow(10),names(CCS))
+# newRanksPlot()
+# for( spcsPair in names(rnks)){
+#   drawRanksCurve(rnks[[spcsPair]],col=spcsPairColors[spcsPair])
+#   drawRanksCurve(rnksT[[spcsPair]],col=spcsPairColors[spcsPair],lty=2)
+# }
+# barplot(rbind(map_dbl(rnks, median),map_dbl(rnksT, median)),beside = T,las=2)
+# legend("bottomright",legend = names(rnks),lty=1,col=spcsPairColors[names(rnks)])
+# 
+# plot(map_int(refOrthos[names(rnks)], nrow),map_dbl(rnks, median),col=spcsPairColors,pch=20)
+# points(map_int(refOrthos[names(rnks)], nrow),map_dbl(rnksT, median),col=spcsPairColors,pch=21)
+# text(map_int(refOrthos[names(rnks)], nrow),map_dbl(rnks, median),labels=names(rnks))
+# 
+# 
+# # get 1:1:1:1:1 orthologs
+# idx <- which(rowSums(taxCount[,as.character(spc2taxid)]==1) == 5)
+# 
+# orthoSingletons <-
+#   treeData[names(idx)] %>% 
+#   map_df( ~ .x$tip.label[ match(spc2taxid,.x$tip.data$taxonID )]) %>% 
+#   t() %>% 
+#   as.data.frame(stringsAsFactors=F) %>%
+#   setNames(names(spc2taxid))
+#   
+# 
+# dim(orthoSingletons)
+# 
+# rnks2 <- list()
+# rnksT2 <- list()
+# for( spcsPair in names(CCS)){
+#   cat(format(Sys.time(),"[%Y-%m-%d %H:%M:%S]"),"Calculating ranks for",spcsPair,"...\n")
+#   spc1 <- substr(spcsPair,1,2)
+#   spc2 <- substr(spcsPair,3,4)
+#   rnks2[[spcsPair]] <- 
+#     quickRanks(CCS = CCS[[spcsPair]],
+#                spc1genes = orthoSingletons[[spc1]],
+#                spc2genes = orthoSingletons[[spc2]])
+#   rnksT2[[spcsPair]] <- 
+#     quickRanksT(CCS = CCS[[spcsPair]],
+#                 spc1genes = orthoSingletons[[spc2]],
+#                 spc2genes = orthoSingletons[[spc1]])
+# }
+# 
+# newRanksPlot()
+# for( spcsPair in names(rnks)){
+#   drawRanksCurve(rnks2[[spcsPair]],col=spcsPairColors[spcsPair])
+#   drawRanksCurve(rnksT2[[spcsPair]],col=spcsPairColors[spcsPair],lty=2)
+# }
+# plot(map_dbl(rnks2, median),map_dbl(rnks, median))
+# 
+# newRanksPlot()
+# for( spcsPair in names(rnks)){
+#   drawRanksCurve(rnks[[spcsPair]],col=spcsPairColors[spcsPair])
+#   drawRanksCurve(rnks[[spcsPair]][orthoSingletons[[substr(spcsPair,1,2)]]],col=spcsPairColors[spcsPair],lty=2)
+# }
+# drawRanksCurve(rnks$OsZm)
+# drawRanksCurve(rnks$OsZm[orthoSingletons$Os],col="red")
+# 
+# max(rnks$AtOs)
+# plot(-log10(1.001-rnks2$AtZm),-log10(1.001-rnks2$AtSl))
+# 
+# x <- rnks2[!grepl("Z|O",names(rnks))] %>% reduce( cbind ) %>% rowMeans
+# y <- rnks2[grepl("At",names(rnks))] %>% reduce( cbind ) %>% rowMeans
+# plot(-log10(1.001-x),-log10(1.001-rnks2$OsZm))
+# 
 
 
 ### Candidate tree ###################
@@ -172,8 +300,9 @@ AtOs11orthos <- lapply(
     Os="data/CCS/Os_AtOs11_geneIDs.RDS"),
   readRDS)
 
-as_tibble(table(geneID2treeID$At[AtOs11orthos$At])) %>% 
-  filter(n>1) %>% .$Var1 -> treesWithSeveral11
+treesWithSeveral11 <-
+  as_tibble(table(geneID2treeID$At[AtOs11orthos$At])) %>% 
+  filter(n>1) %>% .$Var1
 
 
 # alternative smaller tree for testing
@@ -181,20 +310,18 @@ as_tibble(table(geneID2treeID$At[AtOs11orthos$At])) %>%
 #              rowSums(taxCount[,as.character(spc2taxid)]>0) > 2)[1]
 
 
+# CBF genes
+treeID <- geneID2treeID$At["AT1G63030"]
 
 
 # select tree of interrest
-treeID <- treesWithSeveral11[1]
+treeID <- sample(treesWithSeveral11,1)
+length(treeData[[treeID]]$tip.label)
+
 # convert to p4d
 p4d <- treeDataToPhylo4d(fixTreeData(treeData[[treeID]]))
 # remove tips from species without data
-p4d <- p4d[tipData(p4d)$taxonID %in% spc2taxid[c("At","Os","Zm","Sl")]]
-
-td <- fixTreeData(treeData[[treeID]])
-dim(td$m)
-dim(td$tip.data)
-str(td)
-
+p4d <- p4d[tipData(p4d)$taxonID %in% spc2taxid]
 
 # get the phylo version of the tree
 tr <- getPhylo(p4d)
@@ -203,16 +330,16 @@ plot.phylo( nameTree(phylo =  tr))
 nodelabels(nodeData(p4d)$taxonName,frame = "none",adj=c(0,0.5),cex=0.6)
 markDupNodes(p4d)
 
-
 ## Extract rank matrix ####
 #
 
-M <- getRankMat(p4d)
-heatmap(nameMat(M)^2,Rowv = NA,Colv = NA, scale="none")
-heatmap(nameMat(M)^2,scale="none")
+rnksMat <- getRankMat(p4d)
+
+rnksMatLog <- -log10(1.001-rnksMat)
 
 
-
+# and CCS matrix
+ccsMat <- getCCSMat(p4d)
 
 
 
@@ -238,7 +365,8 @@ metaAt$color[is.na(metaAt$color)] <- "gray"
 # reorder the At metadata to match the expression matrix
 metaAt <- metaAt[match(colnames(expAt),metaAt$Run),]
 
-
+expAt <- readRDS("data/expMat/PODC_At.RDS")
+expOs <- readRDS("data/expMat/PODC_Os.RDS")
 
 
 #### Analyse tree #########
@@ -253,30 +381,22 @@ nodelabels(nodeData(p4d)$taxonName,frame = "none",adj=c(0,0.5),cex=0.6)
 markDupNodes(p4d)
 
 
+#
+# plot ranks/CCS matrix
+#
 
-orthoPairRnks(tr$tip.label,CCSAt)
+ggplotlyHeatmap(nameMat(rnksMatLog))
 
-paralogPCC( tr$tip.label, expOs,rename = F)
-paralogPCC( tr$tip.label, expAt)
+ggplotlyHeatmap(nameMat(ccsMat))
 
+#
+# plot expression correlation
+#
 
-plot(expAt["AT5G42650", ],expAt["AT4G15440", ], col=metaAt$color)
-plot(as.data.frame(t(expOs[tr$tip.label[tr$tip.label %in% rownames(expOs)], ])), 
-     pch=20,cex=0.1,col=metaOs$color)
+AtGenes <- tipLabels(p4d)[tipData(p4d)$taxonID == spc2taxid["At"]]
 
-# ORS indicates that OS02G0110200 and to a lesser degree OsCYP74A4 has the most 
-# similar expression pattern with both AtCYP74A and AtCYP74B2.
-# Paralog rank score (PRS) indicates that OsCYP74A1/2/3 are similar.
-# Also to a lesser degree OS02G0110200 and OsCYP74A4 are similar.
-# interrestinlgy OS02G0110200 has a mutually exclusive expression with CYP74A3 and to some degree the others
+plot(as.data.frame(t(expAt[AtGenes, ])),col=metaAt$color,pch=20,cex=0.5)
 
-# OS03G0767000 CYP74A1
-# AT5G42650 CYP74A
+OsGenes <- tipLabels(p4d)[tipData(p4d)$taxonID == spc2taxid["Os"]]
 
-# OS02G0218800/OS02G0218700 a.k.a. CYP74A3/4 are tandem duplicates but their expression does not correlate very well
-# OS03G0225900 a.k.a. CYP74A2 
-
-
-# AT4G15440 a.k.a. CYP74B2
-# OS02G0110200 ?
-
+plot(as.data.frame(t(expOs[OsGenes, ])),col=metaOs$color,pch=20,cex=0.5)

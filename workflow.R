@@ -343,7 +343,7 @@ jobStatus <-
   read_delim(delim="|")
 
 jobStatus %>% 
-  dplyr::select(JobID,JobName,AllocTRES,State) %>% 
+  dplyr::select(JobID,JobName,AllocTRES,MaxRSS,State) %>% 
   mutate( JobName = sub(".*_[0-9]{3}\\.(.*)-1","\\1",JobName))
 
 ## Example of rerun ####
