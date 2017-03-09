@@ -37,97 +37,32 @@ fobj <- Rflow(
   #   fun = "processExpMat_PODC",
   #   paramMat = data.frame( spc = "At" )
   # ),
-  # 
-  # # processExpMat_ebi( inPath, outFile)
+  #
+  # # processExpMat_PODC(spc)
   # Rjob(
-  #   jobName = "processExpMat_Zm",
+  #   jobName = "processExpMat_Sl",
   #   source = "Rjobs/processExpMat.R",
-  #   fun = "processExpMat_ebi",
-  #   paramMat = data.frame( 
-  #     inPath = "indata/RNAseqZm", 
-  #     outFile = "data/expMat/EBI_Zm.RDS"
-  #   ) 
+  #   fun = "processExpMat_PODC",
+  #   paramMat = data.frame( spc = "Sl" )
   # ),
   
-  # processExpMat_PODC(spc)
+
+  # processExpMat_ebi( spc)
   Rjob(
-    jobName = "processExpMat_Sl",
+    jobName = "processExpMat_Zm",
     source = "Rjobs/processExpMat.R",
-    fun = "processExpMat_PODC",
-    paramMat = data.frame( spc = "Sl" )
+    fun = "processExpMat_ebi",
+    paramMat = data.frame( spc = "Zm" )
   ),
-  
   # processExpMat_ebi( inPath, outFile)
   Rjob(
     jobName = "processExpMat_Gm",
     source = "Rjobs/processExpMat.R",
     fun = "processExpMat_ebi",
-    paramMat = data.frame( 
-      inPath = "indata/RNAseqGm", 
-      outFile = "data/expMat/EBI_Gm.RDS"
-    ) 
+    paramMat = data.frame( spc = "Gm" ) 
   )  
 )
 
-## PODC_At_Subsets ####
-#
-# 
-#
-
-fobj <- Rflow(flowname = "PODC_At_Subsets",
-              
-              # PODC_At_HalfSubsetsJob1
-              Rjob(source = "Rjobs/PODC_At_Subsets.R",
-                   fun = "PODC_At_HalfSubsetsJob1" ),
-              
-              # PODC_At_HalfSubsetsJob2
-              Rjob(prev_jobs = "PODC_At_HalfSubsetsJob1", dep_type = "burst", sub_type = "scatter",
-                   source = "Rjobs/PODC_At_Subsets.R",
-                   fun = "PODC_At_HalfSubsetsJob2",
-                   paramMat = expand.grid(subset_idx = 1:10, invertSubset = c(T,F)) ),
-              
-              # PODC_At_HalfSubsetsJob3
-              Rjob(prev_jobs = "PODC_At_HalfSubsetsJob2", dep_type = "gather", sub_type = "scatter",
-                   source = "Rjobs/PODC_At_Subsets.R",
-                   fun = "PODC_At_HalfSubsetsJob3",
-                   paramMat = data.frame(subset_idx = 1:10)),
-              
-              # PODC_At_HalfSubsetsJob4
-              Rjob(prev_jobs = "PODC_At_HalfSubsetsJob1", dep_type = "burst", sub_type = "scatter",
-                   source = "Rjobs/PODC_At_Subsets.R",
-                   fun = "PODC_At_HalfSubsetsJob4",
-                   paramMat = data.frame(subset_idx = 1:10))
-)
-
-
-flowList = makePODC_AtOs_flow()
-flowList$flowdef$jobname
-startJob = c("PODC_AtOs_mergeMI_At","PODC_AtOs_calcMI_Os")
-makePODC_AtOs_flow() %>% startFromJob(startJob) -> x
-x <- startFromJob(flowList,startJob)
-x <- onlyTheseJobs(flowList,startJob)
-fobj <- Rflow(flowname = "test",x)
-plot_flow(Rflow(flowname = "test",x))
-
-
-
-source("Rjobs/PODC_OsAt_Subsets.R")
-fobj <- Rflow( flowname = "PODC_At_Subsets", 
-               makePODC_At_Subsets_flow() %>% startFromJob("PODC_At_HalfSubsetsJob2") )
-fobj <- Rflow( flowname = "PODC_Os_Subsets", makePODC_Os_Subsets_flow() )
-
-# # example of resubmitting starting from specified jobs
-# x <- makePODC_Os_Subsets_flow() %>% 
-#   startFromJob(c("PODC_Os_HalfSubsetsJob3","PODC_Os_HalfSubsetsJob4"))
-# fobj <- Rflow( flowname = "rerunPODC_Os_Subsets", x )
-
-## PODC_AtOs ####
-#
-# 
-#
-
-source("Rjobs/PODC_AtOs.R")
-fobj <- Rflow( flowname = "PODC_AtOs", makePODC_AtOs_flow())
 
 ####
 #
@@ -153,76 +88,6 @@ fobj <- Rflow(flowname = "convertTrees",
                    fun = "mergeTreeDataJob",
                    paramMat = data.frame(outDir = 'data/treeData') ) )
 
-## treesWithAtOs ####
-#
-# 
-#
-
-source("Rjobs/calcMI.R")
-
-
-fobj <- 
-  Rflow(
-    flowname = "CoExCorr",
-    subFlow(
-      prefix="At_",
-      makeMI_flow(
-        expMatFile = "data/expMat/PODC_At.RDS",
-        outDir = "data/subsets/treesWithAtOs",
-        geneIDsubsetFile = "data/subsets/treesWithAtOs/At_geneIDs.RDS",
-        prefix = "At",
-        arraySize = 32,
-        mem = "3G")
-    ), 
-    subFlow(
-      prefix="Os_",
-      makeMI_flow(
-        expMatFile = "data/expMat/PODC_Os.RDS",
-        outDir = "data/subsets/treesWithAtOs",
-        geneIDsubsetFile = "data/subsets/treesWithAtOs/Os_geneIDs.RDS",
-        prefix = "Os",
-        arraySize = 16,
-        mem = "1G")
-    )
-  )
-
-#
-# At Os CCS
-#
-
-Rflow(
-  flowname = "CoExCorr",
-  Rjob(
-    jobName = "getAtOs11refs",
-    source = "Rjobs/CLR_CCS.R", 
-    fun = "get11orthos",
-    paramMat = data.frame( 
-      orthoFile = "indata/At_Os_orthologs.txt",
-      geneIDfile1 = "data/subsets/treesWithAtOs/At_geneIDs.RDS",
-      geneIDfile2 = "data/subsets/treesWithAtOs/Os_geneIDs.RDS",
-      refOrthosFile1 =  "data/subsets/treesWithAtOs/At_AtOs11_geneIDs.RDS",
-      refOrthosFile2 = "data/subsets/treesWithAtOs/Os_AtOs11_geneIDs.RDS"
-    )
-  ),
-  Rjob( 
-    dep_type = "serial", 
-    prev_jobs = "getAtOs11refs", 
-    jobName = "calcAtOsCCS",
-    source = "Rjobs/CLR_CCS.R",
-    fun = "MI_CLR_CCSjob",
-    memory_reserved = "50G",
-    cpu_reserved = 20,
-    paramMat = data.frame(
-      mi_file1 = "data/subsets/treesWithAtOs/At.mi",
-      mi_file2 = "data/subsets/treesWithAtOs/Os.mi",
-      geneIDfile1 = "data/subsets/treesWithAtOs/At_geneIDs.RDS",
-      geneIDfile2 = "data/subsets/treesWithAtOs/Os_geneIDs.RDS",
-      refOrthosFile1 =  "data/subsets/treesWithAtOs/At_AtOs11_geneIDs.RDS",
-      refOrthosFile2 = "data/subsets/treesWithAtOs/Os_AtOs11_geneIDs.RDS",
-      outFile = "data/subsets/treesWithAtOs/AtOs_CCS.RDS" ,
-      cores = 20)
-  )
-) -> fobj
 
 
 ## Full MI matrices ####
@@ -249,9 +114,23 @@ fobj <- Rflow(flowname = "MI_CCS", fl)
 
 fobj <- 
   fl %>% 
-  startFromJob( startJob = c("AtGmcalcCCS", "AtZmcalcCCS", "GmOscalcCCS", "GmSlcalcCCS", 
-                             "GmZmcalcCCS", "OsZmcalcCCS", "SlZmcalcCCS"))  %>% 
+  startFromJob( startJob = c("GmprepMI", "ZmprepMI"))  %>% 
   Rflow(flowname = "RestCCS" ) %>% 
+  plot_flow()
+
+## withinSpecies subsets ####
+#
+#
+#
+
+source("subflows/makeWithinSpeciesFlow.R")
+
+fl <- makeWithinSpeciesFlow()
+
+fobj <- 
+  fl %>% 
+  # startFromJob( startJob = "SlwithinSpeciesJob") %>% 
+  Rflow(flowname = "WithinSpecies" ) %>% 
   plot_flow()
 
 
@@ -329,22 +208,27 @@ jobs <- setdiff( getDownstreamFlowJobs(fl,c("ZmcalcMI")), "ZmcalcMI")
 # get jobNames from fobj
 jobs <- names(fobj@jobs) %>% .[grepl("Gm",.)]
 
-# get jobIDs
+# get jobIDs for jobs with specific names
 jobIDs <- map(fobj@jobs[jobs], ~ .x@id)
+
+# get all jobIDs
+jobIDs <- map(fobj@jobs, ~ .x@id)
+
+
+sacctFrmt<-"JobID,JobName,AllocTRES,MaxRSS,State,Elapsed,NodeList"
 
 # sacct for specified jobIDs
 jobStatus <- 
   jobIDs %>% 
   unlist() %>% 
   paste(collapse=",") %>% 
-  paste("sacct -P -l -j",.) %>% 
+  paste0("sacct -P --format=",sacctFrmt," -j ",.) %>% 
   system(intern=T) %>% 
   paste(collapse = "\n") %>% 
   read_delim(delim="|")
 
 jobStatus %>% 
-  dplyr::select(JobID,JobName,AllocTRES,MaxRSS,State) %>% 
-  mutate( JobName = sub(".*_[0-9]{3}\\.(.*)-1","\\1",JobName))
+  mutate( JobName = sub(".*_[0-9]{3}\\.(.*-[0-9]+$)","\\1",JobName))
 
 ## Example of rerun ####
 #

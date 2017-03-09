@@ -1,0 +1,143 @@
+---
+title: "Within species comparison"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Aim of the analysis
+
+Compare sub-sets of samples from the same species to quantify the effect of the sample selection alone.
+
+## Sample selection
+
+For each species the samples are divided into two sub-sets by randomly selecting half of the studies. This ensures that the sub-sets do not contain any samples from the same study, such as replicate samples, but the number of samples in each sub-set will not be the same. The plot below gives an overview of the samples that were randomly selected for the subsets:
+
+```{r}
+source("R/halfStudiesSubset.R")
+
+ss <- generateHalfStudiesSubsets(reps = 10)
+
+for( spc in names(ss)){
+  m <- ss[[spc]]$subsetMat
+  studySize <- table(ss[[spc]]$studyID)
+  x1 <- cumsum(studySize)
+  x0 <- c(0,x1[-length(x1)])
+  plot(NULL,xlim=c(0,sum(studySize)),ylim=c(1,ncol(m)),
+       xlab="sample index",ylab="replicate index", main=spc)
+  for(i in 1:ncol(m)){
+    segments(x0 = x0[m[ ,i]], x1 = x1[m[ ,i]], y0 = i, y1 = i)
+  }
+}
+
+```
+
+
+## Gene selection
+
+To reduce the computational cost, only a subset of the genes shall be included.
+```{r}
+library(readr)
+library(purrr)
+library(dplyr)
+
+# load expression matrices
+expMat <-
+  dir("data/expMat",pattern="(EBI|PODC)_..\\.RDS",full.names = T) %>% 
+  set_names( sub(".*(EBI|PODC)_(..)\\.RDS","\\2",.) ) %>% 
+  map(readRDS)
+
+# get geneIDs for all genes with expression data
+hasExpGeneIDs <-
+  map( expMat, rownames ) %>% 
+  unlist()
+
+# load orthology data and filter by genes with expression data
+orthos <- 
+  dir("indata/orthologs",full.names = T) %>%
+  set_names(sub(".*(.._..)_orthologs.txt","\\1",.)) %>%
+  map(read_tsv, col_types = cols(), progress = F) %>% 
+  map( ~ .x[.x[[1]] %in% hasExpGeneIDs & .x[[2]] %in% hasExpGeneIDs, ]) # only keep orthologs with expression data
+
+map_int(orthos, nrow)
+table(c(orthos$At_Gm[ ,1]) %in% hasExpGeneIDs)
+table(c(orthos$At_Gm[ ,1])[[1]] %in% hasExpGeneIDs)
+
+x <- orthos$At_Gm
+
+getOrthos <- function(spc1,spc2){
+  if( spc1 < spc2 ){
+    return(orthos[[paste0(spc1,"_",spc2)]])
+  } else {
+    return(orthos[[paste0(spc2,"_",spc1)]])
+  }
+}
+
+
+
+spcs <- c("At","Gm","Os","Sl","Zm") %>% setNames(.,.)
+
+numberOfGenes <- 4000
+
+# include genes that has 1:1 ortholog in any species and any type of ortho in all species
+
+# for each species
+lapply(spcs, function(spc1){
+  
+  # the other species
+  spcs2 <- spcs[spcs != spc1]
+  
+  # sort genes by how many species it has 1:1 ortholog in
+  prioritize11 <-
+    map(spcs2,getOrthos,spc1) %>% # get orthologs to all other species
+    reduce( bind_rows ) %>%       # combine to one table
+    filter(otype=="1:1") %>%      # keep only 1:1 orthologs
+    .[[spc1]] %>%                 # select the spc1 geneIDs
+    table() %>%                   # count occurences
+    sort(decreasing = T)          # sort by number of occurences
+  
+  table(prioritize11)
+  
+  # not enough genes with 1:1?
+  if( length(prioritize11) < numberOfGenes){
+    # sort genes by how many species it has 1:N ortholog in
+    prioritize1N <-
+      map( spcs2, getOrthos, spc1) %>% 
+      map( filter, otype=="1:N" ) %>% 
+      map( ~ unique(.x[[spc1]]) ) %>% 
+      reduce( c ) %>%
+      .[!(. %in% names(prioritize11))] %>% 
+      table() %>% 
+      sort(decreasing = T)
+    
+    return(c(names(prioritize11),names(prioritize1N))[1:numberOfGenes])
+  } else {
+    return(names(prioritize11)[1:numberOfGenes])
+  }
+}) -> geneIDs
+
+```
+
+## Reference "ortholog" selection
+
+```{r}
+length(geneIDs$Gm)
+
+# for each species
+lapply(spcs, function(spc1){
+  
+  # the other species
+  spcs2 <- spcs[spcs != spc1]
+  
+  # get 1:1 orthos
+  refOrthos <- 
+    map(spcs2,getOrthos,spc1) %>% # get orthologs to all other species
+    map( filter, otype=="1:1") %>% 
+    map( ~ .x[[spc1]]) %>% 
+    map( ~ .x[.x %in% geneIDs[[spc1]]])
+})
+
+```
+

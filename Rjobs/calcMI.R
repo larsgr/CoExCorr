@@ -9,6 +9,15 @@ writeTempExpMat <- function(expMat, filename){
   write.table(expMat,file = filename,sep = " ",row.names = F, col.names = F)  
 }
 
+# generate the command to execute genepair
+genepairMICmd <- function( tmpExpMatFile, miFile, ngenes, nexp,
+                         fromgene = 0, togene = ngenes,
+                         num_bins = 7, spline_order = 3){
+  paste("~/genepair/genepair 1", 
+        tmpExpMatFile, miFile, ngenes, nexp, 
+        fromgene, togene, num_bins, spline_order)
+}
+
 #### job step 1
 #
 # Prepare genesubset
@@ -82,17 +91,10 @@ multiMI <- function(tmpExpMatFile, arrayIdx, arraySize){
   
   miFile <- sprintf("%s.mi.%03i",tmpExpMatFile,arrayIdx)
   
-  
-  cmd <- paste("~/genepair/genepair 1", 
-               tmpExpMatFile, # microarray_file.txt
-               miFile, # mi_file.txt
-               ngenes, # ngenes
-               nexp, # nexp
-               fromgene[arrayIdx], # fromgene
-               togene[arrayIdx], # togene
-               7, # num_bins
-               3) # spline_order
-  
+  cmd <- genepairMICmd(tmpExpMatFile, miFile, ngenes, nexp,
+                       fromgene = fromgene[arrayIdx],
+                       togene = togene[arrayIdx] )
+
   cat("CMD:",cmd,"\n")
   
   # run genepair to calculate MI

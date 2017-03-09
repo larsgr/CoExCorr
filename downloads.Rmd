@@ -5,6 +5,7 @@ output: html_document
 
 ```{r loadLibraries, message=FALSE, include=FALSE}
 library(readxl)
+library(purrr)
 ```
 
 ```{r defFun, echo=F}
@@ -34,7 +35,7 @@ PODCexpMatURLs <-
     "http://plantomics.mind.meiji.ac.jp/podc/data/vitis_vinifera_fpkm.tsv.gz",
     "http://plantomics.mind.meiji.ac.jp/podc/data/medicago_truncatula_fpkm.tsv.gz",
     "http://plantomics.mind.meiji.ac.jp/podc/data/solanum_tuberosum_fpkm.tsv.gz",
-    "http://plantomics.mind.meiji.ac.jp/podc/data/glycine_max_fpkm.tsv.gz",
+    # "http://plantomics.mind.meiji.ac.jp/podc/data/glycine_max_fpkm.tsv.gz",
     "http://plantomics.mind.meiji.ac.jp/podc/data/nicotiana_tabacum_fpkm.tsv.gz"
     )
 
@@ -65,10 +66,10 @@ PODCmetadataFiles <- sapply(PODCmetadataURLs, myDownload)
 
 Note: The "readxl" package couldn't open the .xls files, but managed to open .xlsx files. The .xls files therefore had to be converted .xlsx, which was done "manually". For convenience xls files were converted to .RDS files
 
+
 ### Download RNAseq data from EBI
 
 Since the Zm and Gm data used in PODC was a different genome annotation than the one at Ensembl, expression data for the same samples is downloaded from EBI using the API described at http://www.ebi.ac.uk/fg/rnaseq/api/ 
-
 
 ```{r downloadRNAseqFromEBI, echo=FALSE, results='asis'}
 source("R/ebiRNAseqAPI.R")
@@ -121,6 +122,78 @@ invisible(mapply(
   dstPath=c("indata/RNAseqGm","indata/RNAseqZm")
 ))
 
+
+```
+
+
+### Fix the metadata
+
+Because not all of the samples described in the metadata could be downloaded from EBI, the corresponding entries should be removed from the metadata to keep it consistant. Furthermore, the order of the samples in the metadata should be ordered to match the order in the PODC expression data.
+
+```{r fixMetadata, echo=FALSE}
+# fix metadata for expression downloaded from EBI
+
+source("R/PODCfiles.R")
+
+sampleMetaDir <- "indata/sampleMeta"
+dir.create(sampleMetaDir,showWarnings = F)
+
+fixEBImetadata <- function(spc, rnaSeqPath){
+  
+  # load sample metadata
+  sampleData <- loadPODCmeta(spc)
+  
+  # get sample IDs from the downloaded expression data
+  sampleIDs <-
+    # list files
+    dir(rnaSeqPath,pattern="genes.fpkm.tsv",full.names = T) %>% 
+    # read first line from each file
+    map( scan, what = character(),sep = "\t", nlines = 1, quiet=T ) %>% 
+    # remove first entry (it is always "Gene ID")
+    map( ~ .x[-1]) %>% 
+    unlist()
+  
+  cat("*",spc,": removed",sum(!(sampleData$Run %in% sampleIDs)),
+      "sample metadata entries.\n")
+  
+  # remove rows from sampleData that are not in sampleIDs
+  sampleData <- subset(sampleData, Run %in% sampleIDs)
+  
+  
+  saveRDS(sampleData,file = file.path(sampleMetaDir,paste0(spc,".RDS")))
+
+}
+
+invisible(mapply(
+  FUN = fixEBImetadata,
+  spc = c("Gm","Zm"),
+  rnaSeqPath = c("indata/RNAseqGm","indata/RNAseqZm")
+))
+
+
+fixPODCmetadata <- function(spc){
+  
+  # load sample metadata
+  sampleData <- loadPODCmeta(spc)
+  
+  # get sample IDs from the downloaded expression data
+  sampleIDs <- 
+    # get path to downloaded expression table
+    getPathPODCexpMat(spc) %>% 
+    # read first line
+    scan( what = character(), sep = "\t", nlines = 1, quiet=T ) %>% 
+    # remove first entry (it is always "")
+    .[-1]
+  
+  # reorder rows in sampleData to match sampleIDs
+  sampleData <- sampleData[ match(sampleIDs, sampleData$Run), ]
+  
+  # save as RDS file
+  saveRDS(sampleData,file = file.path(sampleMetaDir,paste0(spc,".RDS")))
+
+}
+
+invisible(lapply(c("At","Os","Sl"), fixPODCmetadata ))
 
 ```
 

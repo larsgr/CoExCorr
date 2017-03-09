@@ -7,9 +7,9 @@
 #' @param fun name of function to be called
 #' @param paramMat data.frame with arguments to the function. Each
 #' @param jobName name of job
-#' @param prev_jobs name of job
-#' @param dep_type "none", "serial", "burst" or "merge"
-#' @param sub_type "serial": function call will be run after each other, 
+#' @param prev_jobs name of previous job or "none"
+#' @param dep_type "none", "serial", "burst" or "gather"
+#' @param sub_type "serial": function call will be run after each other in one job, 
 #'                 or "scatter": each function call will be run in parallel
 #' @param cpu_reserved number of CPU's per job
 #' @param memory_reserved memory to reserve for this job. e.g. "4G" or "200M"

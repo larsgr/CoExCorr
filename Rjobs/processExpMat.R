@@ -50,9 +50,13 @@ processExpMatConvertIDs <- function( inFile, outFile, convertID ){
 }
 
 
-processExpMat_ebi <- function( inPath, outFile){
-  
+processExpMat_ebi <- function( spc ){
   library(readr)
+  source("R/PODCfiles.R")
+  
+  inPath <- paste0("indata/RNAseq",spc)
+  outFile <- paste0("data/expMat/EBI_",spc,".RDS")
+  sampleMeta <- loadSampleMeta(spc)
   
   inFiles <- dir(inPath,pattern = "genes.fpkm.tsv",full.names = T)
   expDFs <- lapply(inFiles,read_tsv)
@@ -72,6 +76,9 @@ processExpMat_ebi <- function( inPath, outFile){
       if(!identical(rownames(x),rownames(expMat)))
         stop("expression matrix rownames don't match!")
     }))
+
+  # reorder and remove columns to match metadata
+  expMat <- expMat[ , match(sampleMeta$Run, colnames(expMat)) ]
   
   # log transform
   expMat <- log2(0.1+expMat)

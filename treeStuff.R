@@ -347,8 +347,9 @@ ccsMat <- getCCSMat(p4d)
 #### load metadata #############
 #
 #
-metaOs <- readxl::read_excel("indata/oryza_sativa_sample.xlsx",col_types = rep("text",15))
-metaAt <- readxl::read_excel("indata/arabidopsis_thaliana_sample.xlsx",col_types = rep("text",15))
+source("R/PODCfiles.R")
+metaOs <- loadSampleMeta("Os")
+metaAt <- loadSampleMeta("At")
 PO <- data_frame( 
   Tissue = c("PO:0005026","PO:0000025","PO:0003011","PO:0009005","PO:0000256","PO:0000263",
          "PO:0009006","PO:0025034","PO:0020103","PO:0000014",
@@ -362,8 +363,6 @@ metaOs$color[is.na(metaOs$color)] <- "gray"
 metaAt %>%  left_join(PO,by="Tissue") -> metaAt
 metaAt$color[is.na(metaAt$color)] <- "gray"
 
-# reorder the At metadata to match the expression matrix
-metaAt <- metaAt[match(colnames(expAt),metaAt$Run),]
 
 expAt <- readRDS("data/expMat/PODC_At.RDS")
 expOs <- readRDS("data/expMat/PODC_Os.RDS")
