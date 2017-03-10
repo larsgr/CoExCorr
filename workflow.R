@@ -130,7 +130,7 @@ spcs <- names(nGenes) %>% set_names(.,.)
 spcPairs <-
   crossing(spc1 = spcs,spc2 = spcs) %>%  # get all possible spc pairs
   filter( spc1 < spc2 ) %>% # remove redundant pairs
-  # calculate memory requirements:
+  # calculate memory requirements: !(turned out to be underestimated by up to 5G!)
   mutate( memReq = paste0( ceiling(1.0*nGenes[spc1]*nGenes[spc2]*8/2^30 + 1),"G"))
 
 fl <- 
