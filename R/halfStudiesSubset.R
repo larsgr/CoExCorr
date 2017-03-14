@@ -85,8 +85,6 @@ getSubsetGeneIDsAndRefOrthos <- function(numberOfGenes, hasExpGeneIDs){
       table() %>%                   # count occurences
       sort(decreasing = T)          # sort by number of occurences
     
-    table(prioritize11)
-    
     # not enough genes with 1:1?
     if( length(prioritize11) < numberOfGenes){
       # sort genes by how many species it has 1:N ortholog in

@@ -7,6 +7,11 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
+```{r loadPackages, include=FALSE}
+library(tidyverse)
+library(ggplot2)
+```
+
 # Aim of the analysis
 
 Compare sub-sets of samples from the same species to quantify the effect of the sample selection alone.
@@ -15,7 +20,7 @@ Compare sub-sets of samples from the same species to quantify the effect of the 
 
 For each species the samples are divided into two sub-sets by randomly selecting half of the studies. This ensures that the sub-sets do not contain any samples from the same study, such as replicate samples, but the number of samples in each sub-set will not be the same. The plot below gives an overview of the samples that were randomly selected for the subsets:
 
-```{r}
+```{r sampleSelection, echo=F}
 
 # load subsets
 ss <- 
@@ -41,15 +46,15 @@ for( spc in names(ss)){
 
 ## Gene selection
 
-To reduce the computational cost, only a subset of the genes shall be included. Genes with 1:1 orthologs are prioritized and if that is not enough then also use genes with 1:2 orthologs.
+To reduce the computational cost, only a subset (n=4000) of the genes shall be included. Genes with 1:1 orthologs are prioritized and if that is not enough then also use genes with 1:2 orthologs.
 
 ## Reference "ortholog" selection
 
-Use the 1:1 orthologs as reference orthologs. Ranks are calculated once for each set of 1:1 orthologs against the other species.
+When comparing within species there are no orthologs and any gene can be used as a reference "ortholog". To make the comparison more similar to that of the between species we use the 1:1 orthologs to each of the other species as reference orthologs. Ranks are calculated once for each set of 1:1 orthologs against the other species. In later plots "refOrthoSpc" refer to the different sets of orthologs.
 
 ## results
 
-```{r}
+```{r fullRankscompare, fig.height=4, fig.width=9, dev='svg', echo=F}
 
 withinRnks <- 
   data_frame( filename = dir("data/subsets/withinSpecies",
@@ -60,8 +65,6 @@ withinRnks <-
 
 
 
-
-library(ggplot2)
 
 # load Full CCS ranks
 fullRnks <-
@@ -94,22 +97,129 @@ fullRnks %>%
   mutate( typ="Between species" ) %>% 
   bind_rows( withinRnksUnnested ) %>% 
   mutate( logRnks = -log10(1.0001-rnks)) %>% 
-  ggplot( aes( x=spc2, y=logRnks, fill=typ) ) +
+  ggplot( aes( x=spc2, y=logRnks, colour=typ) ) +
   facet_wrap(~as.factor(spc1), nrow=1) +
   geom_violin() +
   stat_summary(fun.y=median, geom="point", size=2, shape=23)
 
 
+```
+
+
+## compare randomized subsets
+
+
+```{r compareRepNr, fig.height=10, fig.width=5, dev='svg', echo=F}
 withinRnksUnnested %>% 
-  filter(spc1=="Gm") %>% 
   mutate( logRnks = -log10(1.0001-rnks)) %>% 
   ggplot( aes( x=repNr, y=logRnks) ) +
+  facet_wrap(~as.factor(spc1), ncol=1) +
   geom_violin() +
   stat_summary(fun.y=median, geom="point", size=2, shape=23)
 
+```
+
+
+## compare ref.orthos
+
+```{r compRefOrthos, fig.height=4, fig.width=9, dev='svg', echo=F}
+withinRnksUnnested2 <- 
+  withinRnks %>%
+  mutate(filename=NULL) %>% 
+  mutate(rnks = rnks %>% 
+           map(map,unlist) %>%  # unlist inner list (transposed ranks)
+           map(as_data_frame) %>% 
+           map(gather, key="refOrthoSpc",value="rnks")
+         ) %>% 
+  unnest()
+
+withinRnksUnnested2 %>% 
+  mutate( logRnks = -log10(1.0001-rnks)) %>% 
+  ggplot( aes( x=refOrthoSpc, y=logRnks) ) +
+  facet_wrap(~as.factor(spc), nrow=1) +
+  geom_violin() +
+  stat_summary(fun.y=median, geom="point", size=2, shape=23)
+```
 
 
 
+```{r nRefcompare, dev='svg', echo=F}
+refOrthos <- 
+  dir("data/subsets/withinSpecies", recursive = T,
+    pattern="refOrthos.RDS",full.names = T) %>% 
+  set_names(sub(".*/(..)/refOrthos.RDS","\\1",.)) %>% 
+  map( readRDS ) # read refOrthos geneIDs
+
+nRefOrthos <- 
+  refOrthos %>% 
+  map( map, length ) %>% # count number of refOrthos
+  map_df(as_data_frame,.id = "spc") %>% # convert to data_frame
+  gather( -spc, key="refOrthoSpc", value="n", na.rm = T)
+
+withinRnksUnnested2 %>% 
+  group_by(spc,refOrthoSpc) %>% 
+  summarise( medLogRnk = median(-log10(1.0001-rnks))) %>% 
+  right_join(nRefOrthos, by = c("spc", "refOrthoSpc")) %>% 
+  ggplot( aes(x=n,y=medLogRnk)) +
+  geom_point( aes(shape = factor(refOrthoSpc), colour=factor(spc)) )
+  
+```
+
+
+## rank stability
+
+Do the same genes tend to have same ranks regardless of choice of sample subset? The plot below shows the correlation between the ranks in the subset replicates. There is a clear tendency to correlate even though it varies between the replicates, so in general there seems to be certain genes that tend to have higher ranks than others. This is expected as there are several gene specific properties that can affects its likelihood to get a high rank. Example of properties that are necessary to achieve a stable high rank:
+
+* Many co-expressed genes
+* Expressed in many conditions
+* Large range of expression across samples.
+
+What is most surprising is that Gm and specifically Zm has mostly low or negative correlation with only a few pairs of replicates that have a rather high correlation. It seems that different combinations of samples leads to different sets of genes getting a high rank. This is most likely an effect of the type of samples
+
+```{r rankCorr, fig.height=4, fig.width=9, dev='svg', echo=F}
+# flatten one level of a nested list inside a data.frame
+unnest1 <- function(x, .id){
+  listColIdx <- which(map_lgl(x,is.list))
+  if( length(listColIdx) != 1) stop("Must be exactly one list column")
+  
+  # extract the list column
+  l <- x[[listColIdx]]
+  x <- x[-listColIdx]
+  
+  # replace it with a list of names
+  x[[.id]] <- lapply(l, function(y){
+    if(is.null(names(y))){
+      return(as.character(seq_along(y)))
+    } else {
+      return(names(y))
+    }
+  })
+  # unnest names
+  x <- unnest(x)
+  # add unnested(flattened) list
+  x[[names(listColIdx)]] <- flatten(l)
+  
+  return(x)
+}
+
+# helper function to calculate the correlation between all the ranks
+rnksCor <- function(rnksList){
+  do.call(cbind,rnksList) %>% 
+    cor() %>% 
+    .[lower.tri(.)]
+}
+
+withinRnks %>% 
+  unnest1( .id = "refOrthoSpc" ) %>% 
+  unnest1( .id = "T" ) %>% 
+  group_by( spc, refOrthoSpc, T) %>% 
+  nest(rnks,.key = rnkCor) %>% 
+  mutate(rnkCor = map(rnkCor, ~ rnksCor(.x$rnks))) %>%
+  unnest() %>% 
+  ggplot( aes( x=refOrthoSpc, y=rnkCor)) +
+  geom_boxplot() +
+  facet_wrap(~as.factor(spc), nrow=1)
 
 ```
+
 
