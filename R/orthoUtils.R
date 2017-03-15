@@ -10,10 +10,10 @@
 #
 getOrthos1N <- function(orthoTable, spc1, spcN){
   # get 1:N (and N:1) orthos using the otype
-  ort1N <- AtOsOrthos[orthoTable$otype == "1:N",c(spc1,spcN)]
+  ort1N <- orthoTable[orthoTable$otype == "1:N",c(spc1,spcN)]
   
   # group by the species with single ortholog
-  grpSpc1 <- tapply(ort1N[ ,spcN],ort1N[ ,spc1],c)
+  grpSpc1 <- tapply(ort1N[[spcN]],ort1N[[spc1]],c)
   
   # remove the groups that are actually N:1
   return( grpSpc1[sapply(grpSpc1,length)>1] )
@@ -44,12 +44,26 @@ getOrthos1Nmatrix <- function(orthoTable, N, spc1, spcN,
   idxMissing <- unique(c(idxGeneMissing,idxOrthoMissing))
   if(length(idxMissing) > 0){
     cat("Removing",length(idxMissing),"ortholog groups because of unknown geneIDs.\n")
-    ortho1N <- ortho1N[-idxMissing,]
+    ortho1N <- ortho1N[-idxMissing, ]
   }
   
   return(ortho1N)
 }
 
+orthoTbl2Array <- function(orthoTable){
+  # first group by the genes in spc1 and collapse the spc2 orthologs to a single string
+  grpOrt2byTbl1 <- tapply(orthoTable[[2]],orthoTable[[1]], function(x){paste(sort(x),collapse=",")})
+  # Then group by the collapsed spc2 orthologs and collapse the spc2 genes which have these orthologs
+  # (It is assumed that the Gene IDs were sorted)
+  grpOrt1byOrt2 <- tapply(names(grpOrt2byTbl1),grpOrt2byTbl1,paste,collapse=",")
+  
+  # convert to array of list
+  grps <- strsplit(c(as.vector(grpOrt1byOrt2),names(grpOrt1byOrt2)),split=",")
+  dim(grps) <- c(length(grpOrt1byOrt2),2)
+  colnames(grps) <- colnames(orthoTable)[1:2]
+  
+  return(grps)
+}
 
 ####
 #
@@ -59,18 +73,5 @@ getOrthos1Nmatrix <- function(orthoTable, N, spc1, spcN,
 #
 getOrthosNN <- function(orthoTable, spc1, spc2){
   # get N:N orthos table
-  tblNN <- orthoTable[orthoTable$otype == "N:N",c(spc1,spc2)]
-  
-  # first group by the genes in spc1 and collapse the spc2 orthologs to a single string
-  grpOrt2byTbl1 <- tapply(tblNN[ ,spc2],tblNN[ ,spc1],paste,collapse=",")
-  # Then group by the collapsed spc2 orthologs and collapse the spc2 genes which have these orthologs
-  # (It is assumed that the Gene IDs were sorted)
-  grpOrt1byOrt2 <- tapply(names(grpOrt2byTbl1),grpOrt2byTbl1,paste,collapse=",")
-  
-  # convert to array of list
-  grps <- strsplit(c(as.vector(grpOrt1byOrt2),names(grpOrt1byOrt2)),split=",")
-  dim(grps) <- c(length(grpOrt1byOrt2),2)
-  colnames(grps) <- c(spc1,spc2)
-  
-  return(grps)
+  orthoTbl2Array(orthoTable[orthoTable$otype == "N:N",c(spc1,spc2)])
 }

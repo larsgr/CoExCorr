@@ -45,6 +45,17 @@ quickRanksT <- function(CCS,spc1genes,spc2genes){
   })/nrow(CCS)
 }
 
+# Automatically detect if quickRanks or quickRanksT should be used
+# based on geneIDs
+quickRanksA <- function(CCS,spc1genes,spc2genes){
+  if( spc1genes[1] %in% rownames(CCS) ){
+    return( quickRanks(CCS,spc1genes,spc2genes) )
+  } else{
+    return( quickRanksT(CCS,spc1genes,spc2genes) )
+  }
+}
+
+
 # Calculates and draws a ROC like curve from a rank vector
 drawRanksCurve <- function(rnk,by=1/length(rnk),...){
   h <- hist(rnk,breaks=seq(0,1,by=by),plot=F)

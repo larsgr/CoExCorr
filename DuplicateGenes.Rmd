@@ -1,0 +1,123 @@
+---
+title: "Comparison of duplicated genes"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, dev = 'svg')
+```
+
+```{r loadPackages}
+library(tidyverse)
+source("R/calcRanks.R")
+source("R/orthoUtils.R")
+source("R/divUtils.R")
+
+```
+
+## Aim of this analysis
+
+investigate the expression similarity of duplicated genes
+
+
+```{r loadData}
+myReadRDS <- function(filename){
+  cat(format(Sys.time(),"[%Y-%m-%d %H:%M:%S]"),"Reading",filename,"...\n")
+  readRDS(file = filename)
+}
+
+CCS <-
+  dir("data/CCS",pattern="(OsSl|AtSl|AtOs)_CCS",full.names = T) %>% 
+  set_names( sub(".*/(.{4})_.*","\\1",.)) %>% 
+  map( myReadRDS )
+
+geneIDs <- 
+  dir("data/MI",pattern=".._geneIDs.RDS",full.names = T) %>% 
+  set_names( sub(".*/(..)_geneIDs.RDS","\\1",.)) %>% 
+  map( readRDS )
+
+
+# load Full CCS ranks
+fullRnks <-
+  data_frame( filename=dir("data/CCS",pattern="....11_rnks.RDS",full.names = T)) %>% 
+  mutate(spc1 = sub(".*/(..)(..)11_rnks.RDS","\\1",filename),
+         spc2 = sub(".*/(..)(..)11_rnks.RDS","\\2",filename),
+         rnks = map(filename,readRDS),
+         filename = NULL) %>% 
+  unnest1(.id = "T") %>% 
+  mutate( spc1_ = spc1,  # swap spc1 and spc2 if T==2
+          spc1 = ifelse(T==1, spc1, spc2),
+          spc2 = ifelse(T==1, spc2, spc1_),
+          spc1_ = NULL, T = NULL)
+
+
+```
+
+```{r}
+# load orthology data
+orthos <- 
+  dir("indata/orthologs",full.names = T) %>%
+  set_names(sub(".*(.._..)_orthologs.txt","\\1",.)) %>%
+  map(read_tsv, col_types = cols(), progress = F)
+
+# helper function to get the ortho set
+getOrthoTbl <- function(spc1,spc2){
+  if( spc1 < spc2 ){
+    return(orthos[[paste0(spc1,"_",spc2)]]) 
+  } else {
+    return(orthos[[paste0(spc2,"_",spc1)]])
+  }
+}
+
+# helper function to select the correct CCS matrix
+getCCS <- function(spc1,spc2){
+  CCS[[paste(sort(c(spc1,spc2)),collapse="")]]
+}
+
+```
+
+```{r}
+
+# get the 1:2 orthologs
+spc1="At"
+spc2="Os"
+
+orthoTable <- getOrthoTbl(spc1,spc2)
+
+# anonymize the spc columns in the table
+names(orthoTable)[match(c(spc1,spc2),names(orthoTable))] <- c("SPC1", "SPC2")
+
+grps <- orthoTbl2Array(orthoTable)
+
+orthoTable <-
+  orthoTable %>% 
+  filter( SPC1 %in% geneIDs[[spc1]], 
+          SPC2 %in% geneIDs[[spc2]])
+
+system.time(
+  orthoTable$rnk <- quickRanksA(getCCS(spc1,spc2), orthoTable$SPC1, orthoTable$SPC2)
+)# took about 15mins
+
+
+
+as_data_frame(grps) %>% 
+  mutate( len1 = map_int(SPC1,length),
+          len2 = map_int(SPC2,length)) %>% 
+  unnest(SPC1) %>% 
+  inner_join(orthoTable, by = "SPC1") %>% 
+  mutate( logRnk = -log10(1.0001-rnk),
+          len1m = pmin(len1,6),
+          len2m = pmin(len2,6)) %>% 
+  ggplot( aes( x=len1m, y=logRnk, group=as.factor(len1m)) ) +
+  facet_wrap(~as.factor(len2m), nrow=1) +
+  geom_violin() +
+  stat_summary(fun.y=median, geom="point", size=2, shape=20)
+
+table(rowSums(len==2)==2)
+
+allOrthoRnks <- quickRanksA(getCCS(spc1,spc2), orthoTable[[spc1]], orthoTable[[spc2]])
+
+summarise_(mtcars, ~mean(eval(spc1)) )
+
+```
+
