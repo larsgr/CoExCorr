@@ -9,9 +9,10 @@ knitr::opts_chunk$set(echo = FALSE, dev = 'svg')
 
 ```{r loadPackages}
 library(tidyverse)
-source("R/calcRanks.R")
+library(ggplot2)
+# source("R/calcRanks.R")
 source("R/orthoUtils.R")
-source("R/divUtils.R")
+# source("R/divUtils.R")
 
 ```
 
@@ -19,105 +20,76 @@ source("R/divUtils.R")
 
 investigate the expression similarity of duplicated genes
 
+```{r loadRankOrthoTables}
 
-```{r loadData}
-myReadRDS <- function(filename){
-  cat(format(Sys.time(),"[%Y-%m-%d %H:%M:%S]"),"Reading",filename,"...\n")
-  readRDS(file = filename)
-}
+orthoRankTables <-
+  dir("data/ranks", pattern="...._orthoRanks.RDS",full.names=T)  %>%
+  set_names(sub(".*/(....)_orthoRanks.RDS","\\1", .)) %>% 
+  map(readRDS) %>% 
+  map( function( orthoTable ){
+    # anonymize the spc1 and spc2 columns in the table
+    names(orthoTable)[1:2] <- c("SPC1", "SPC2")
+    
+    return(orthoTable)
+  })
 
-CCS <-
-  dir("data/CCS",pattern="(OsSl|AtSl|AtOs)_CCS",full.names = T) %>% 
-  set_names( sub(".*/(.{4})_.*","\\1",.)) %>% 
-  map( myReadRDS )
-
-geneIDs <- 
-  dir("data/MI",pattern=".._geneIDs.RDS",full.names = T) %>% 
-  set_names( sub(".*/(..)_geneIDs.RDS","\\1",.)) %>% 
-  map( readRDS )
-
-
-# load Full CCS ranks
-fullRnks <-
-  data_frame( filename=dir("data/CCS",pattern="....11_rnks.RDS",full.names = T)) %>% 
-  mutate(spc1 = sub(".*/(..)(..)11_rnks.RDS","\\1",filename),
-         spc2 = sub(".*/(..)(..)11_rnks.RDS","\\2",filename),
-         rnks = map(filename,readRDS),
-         filename = NULL) %>% 
-  unnest1(.id = "T") %>% 
-  mutate( spc1_ = spc1,  # swap spc1 and spc2 if T==2
-          spc1 = ifelse(T==1, spc1, spc2),
-          spc2 = ifelse(T==1, spc2, spc1_),
-          spc1_ = NULL, T = NULL)
+# calculate size of groups
+grpSize <-
+  lapply(orthoRankTables, function( orthoTable ){
+    orthoTbl2Array(orthoTable) %>%
+      as_data_frame() %>% 
+      mutate( len1 = map_int(SPC1,length),
+              len2 = map_int(SPC2,length))
+  })
 
 
 ```
 
-```{r}
-# load orthology data
-orthos <- 
-  dir("indata/orthologs",full.names = T) %>%
-  set_names(sub(".*(.._..)_orthologs.txt","\\1",.)) %>%
-  map(read_tsv, col_types = cols(), progress = F)
+## Rank distribution and ortholog duplicity
 
-# helper function to get the ortho set
-getOrthoTbl <- function(spc1,spc2){
-  if( spc1 < spc2 ){
-    return(orthos[[paste0(spc1,"_",spc2)]]) 
-  } else {
-    return(orthos[[paste0(spc2,"_",spc1)]])
-  }
-}
-
-# helper function to select the correct CCS matrix
-getCCS <- function(spc1,spc2){
-  CCS[[paste(sort(c(spc1,spc2)),collapse="")]]
-}
-
-```
-
-```{r}
-
-# get the 1:2 orthologs
-spc1="At"
-spc2="Os"
-
-orthoTable <- getOrthoTbl(spc1,spc2)
-
-# anonymize the spc columns in the table
-names(orthoTable)[match(c(spc1,spc2),names(orthoTable))] <- c("SPC1", "SPC2")
-
-grps <- orthoTbl2Array(orthoTable)
-
-orthoTable <-
-  orthoTable %>% 
-  filter( SPC1 %in% geneIDs[[spc1]], 
-          SPC2 %in% geneIDs[[spc2]])
-
-system.time(
-  orthoTable$rnk <- quickRanksA(getCCS(spc1,spc2), orthoTable$SPC1, orthoTable$SPC2)
-)# took about 15mins
+The following plots show the distribution of ranks (i.e. -log10( Pval ) ) for each pair of species and for ortholog duplicity. "len1" refers to the number of ortholog copies in the first species and len2 in the second. (e.g. a 1:2 ortholog in At:Os would be AtOs len1=1 len2=2)
 
 
+```{r plotOrthoRanks, fig.height=9,fig.width=15}
+x <- 
+  # add grpSize to orthoRankTables and concatenate into one table
+  map2_df(grpSize, orthoRankTables, .id="spcPair",
+        ~ .x %>% 
+          unnest(SPC1) %>% 
+          inner_join(.y, by = "SPC1")) %>% 
+  # gather rnksT and rnks to one column
+  gather( rnks, rnksT, key="rnkT", value="rnk") %>% 
+  # remove NA's
+  filter( !is.na(rnk), len1 < 6, len2 < 6) %>% 
+  # log transform ranks
+  mutate( logRnk = -log10(1.0001-rnk) ) 
 
-as_data_frame(grps) %>% 
-  mutate( len1 = map_int(SPC1,length),
-          len2 = map_int(SPC2,length)) %>% 
-  unnest(SPC1) %>% 
-  inner_join(orthoTable, by = "SPC1") %>% 
-  mutate( logRnk = -log10(1.0001-rnk),
-          len1m = pmin(len1,6),
-          len2m = pmin(len2,6)) %>% 
-  ggplot( aes( x=len1m, y=logRnk, group=as.factor(len1m)) ) +
-  facet_wrap(~as.factor(len2m), nrow=1) +
+x %>%  
+  ggplot( aes( x=as.factor(len1), y=logRnk) ) +
+  facet_grid(as.factor(len2) ~ as.factor(spcPair)) +
   geom_violin() +
   stat_summary(fun.y=median, geom="point", size=2, shape=20)
 
-table(rowSums(len==2)==2)
+```
+The following heatmap of median ranks which may give a better overview:
 
-allOrthoRnks <- quickRanksA(getCCS(spc1,spc2), orthoTable[[spc1]], orthoTable[[spc2]])
-
-summarise_(mtcars, ~mean(eval(spc1)) )
+```{r}
+x %>% 
+  group_by(spcPair,len1,len2) %>% 
+  summarise( medRnk = median(logRnk)) %>% 
+  ggplot() +
+  geom_tile( aes(x=as.factor(len1),y=as.factor(len2),fill=medRnk) ) +
+  facet_wrap( ~ as.factor(spcPair), nrow=2 ) +
+  scale_fill_gradientn( colors = RColorBrewer::brewer.pal(5,"Spectral"),
+                       values = scales::rescale(4:0),
+                       limits = c(0,2)) +
+  coord_equal() +
+  theme_bw()
+  
 
 ```
+The main observation is that 1:1 orthologs clearly tend to have higher ranks than orthologs with any number of duplicates and that the ranks get lower when the number of orthologs increases. (Note that there is increased uncertainty in the median of the larger groups as they are more rare). An interresting pattern is that orthologs with either one or two copies in Gm seem to have the approximately same ranks. A possible explanation could be the recent duplication in Gm and that a high portion of the genes that prefer occurr in single copies haven't had time to lose its copy.
+
+
+
 
