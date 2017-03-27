@@ -7,9 +7,12 @@ output: html_document
 knitr::opts_chunk$set(echo = FALSE, dev = 'svg')
 ```
 
-```{r loadPackages}
+```{r loadPackages, include=FALSE}
 library(tidyverse)
 library(ggplot2)
+library(plotly)
+library("scales")
+
 # source("R/calcRanks.R")
 source("R/orthoUtils.R")
 # source("R/divUtils.R")
@@ -45,9 +48,9 @@ grpSize <-
 
 ```
 
-## Rank distribution and ortholog duplicity
+## Rank distribution and ortholog duplication level
 
-The following plots show the distribution of ranks (i.e. -log10( Pval ) ) for each pair of species and for ortholog duplicity. "len1" refers to the number of ortholog copies in the first species and len2 in the second. (e.g. a 1:2 ortholog in At:Os would be AtOs len1=1 len2=2)
+The following plots show the distribution of ranks (i.e. -log10( Pval ) ) for each pair of species and for ortholog duplication level. "len1" refers to the number of ortholog copies in the first species and len2 in the second. (e.g. a 1:2 ortholog in At:Os would be AtOs len1=1 len2=2)
 
 
 ```{r plotOrthoRanks, fig.height=9,fig.width=15}
@@ -73,7 +76,7 @@ x %>%
 ```
 The following heatmap of median ranks which may give a better overview:
 
-```{r}
+```{r orthoMedRnkHeatmap}
 x %>% 
   group_by(spcPair,len1,len2) %>% 
   summarise( medRnk = median(logRnk)) %>% 
@@ -88,8 +91,156 @@ x %>%
   
 
 ```
+
 The main observation is that 1:1 orthologs clearly tend to have higher ranks than orthologs with any number of duplicates and that the ranks get lower when the number of orthologs increases. (Note that there is increased uncertainty in the median of the larger groups as they are more rare). An interresting pattern is that orthologs with either one or two copies in Gm seem to have the approximately same ranks. A possible explanation could be the recent duplication in Gm and that a high portion of the genes that prefer occurr in single copies haven't had time to lose its copy.
 
+```{r OrthoRankTrend}
+reverselog_trans <- function(base = exp(1)) {
+    trans <- function(x) -log(x, base)
+    inv <- function(x) base^(-x)
+    trans_new(paste0("reverselog-", format(base)), trans, inv, 
+              log_breaks(base = base), 
+              domain = c(1e-100, Inf))
+}
+
+# take only the 1:1-4 and plot in a single figure
+x %>% 
+  # Swap the order of spc so that the spc with a single ortholog comes first (e.g. AtOs 1:2 = At1:Os2, OsAt 1:2 = Os1:At2)
+  mutate( spcPair=ifelse(len2<len1,sub("(..)(..)","\\2\\1",spcPair), spcPair) ) %>%
+  mutate( Pval = 1.0001-rnk ) %>% 
+  group_by(spcPair,len1,len2,rnkT) %>% 
+  summarise( medPval = median(Pval)) %>% 
+  # summarise( medRnk = median(logRnk)) %>% 
+  filter( (len1==1 & len2<5) | (len2==1 & len1<5) ) %>%
+  mutate( orthoDupLevel = paste0("1:",pmax(len1,len2))) %>%
+  ggplot() +
+  # geom_line( aes(x=pmax(len1,len2),y=medPval,color=spcPair,linetype=rnkT) ) +
+  geom_point( aes(x=as.factor(paste0("1:",pmax(len1,len2))),y=medPval) ) +
+  theme_bw() +
+  ylab("Median P-value") +
+  xlab("Ortholog count") +
+  scale_y_continuous(breaks=c(1,0.5,0.1,0.05,0.01),trans=reverselog_trans(10)) 
+  
+  #scale_x_continuous(breaks=1:4, labels=paste0("1:",1:4)) -> g
+
+# ggplotly(g)
+
+```
+
+## 1:2 orthologs
+
+If we look at 1:2 orthologs we can plot the score between the single ortholog and the two duplicate orthologs. The following plots show the -log10(P) transformed rank for each of the two alternative orthologs plotted against each other. If both of the duplicate genes have retained the same function we expect them to be similar, while if one of the duplicates have taken a different function (i.e. neo- or sub-functionalized) they may have diverged expressed patterns. Since the score for each of the duplicates also depends on whether the single ortholog has diverged it is however expected the scores correlated to a certain degree. There is one plot for each species-pair and the order of the species indicates which species that contain the duplicate, e.g. AtGm contains the At1:Gm2 orthologs.
+
+```{r}
+library(ggpmisc) # stat_poly_eq
+
+# 1:2
+x %>%
+  filter( len1==1, len2==2, rnkT=="rnks") %>% 
+  group_by(SPC1,spcPair) %>%
+  summarise( rnk1=first(logRnk),rnk2=last(logRnk))  %>%
+  ggplot(aes(x=rnk1,y=rnk2)) +
+  geom_point() +
+  geom_density2d() +
+  stat_poly_eq( formula = x~y,
+                aes(label = ..rr.label..), fontface="bold",color="red",
+                parse = TRUE) +
+  facet_wrap( ~ as.factor(spcPair), nrow=3 )
+
+# 2:1
+x %>%
+  filter( len1==2, len2==1, rnkT=="rnksT") %>% 
+  mutate( spcPair = factor(sub("(..)(..)","\\2\\1",spcPair),
+                           ordered = T,
+                           levels = sub("(..)(..)","\\2\\1",unique(spcPair)))) %>% 
+  group_by(SPC2,spcPair) %>%
+  summarise( rnk1=first(logRnk),rnk2=last(logRnk)) %>% 
+  ggplot(aes(x=rnk1,y=rnk2)) +
+  geom_point() +
+  geom_density2d() +
+  stat_poly_eq( formula = x~y,
+                aes(label = ..rr.label..), fontface="bold",color="red",
+                parse = TRUE) + 
+  facet_wrap( ~ spcPair, nrow=3 )
+
+
+```
+
+The set of genes that have a 1:1 ortholog relationship between At and Os are more likely to be essential and therefore have a conserved expression pattern. Given the recent WGD in Gm there are many of these genes that have duplicate orthologs in Gm (i.e. At1:Gm2). The plots below compare the ranks distribution of two groups of At1:Gm2 orthologs, those that are At1:Os1 (singleton) and those that are not. The singletons are expected to be under selective pressure to retain the expression pattern. It does not seem to be any significant difference between the groups regarding the correlation between the duplicate ranks, indicating that different selection pressure does not affect difference in the expression between the two duplicates since the duplication in Gm. However, there is a significant difference in the mean ranks of the two duplicates in the two groups, i.e. the singleton group tend to have higher ranks. This might indicate that most of the expression divergence occured in the At lineage or before the WGD in the Gm lineage. If we compare the ranks of the At1:Os1 orthologs with the corresponding mean ranks of the At1:Gm2 orthologs we see that they correlate well but that At1:Gm2 rarely have higher rank than At1:Os1. As At:Os is more distantly related than At:Gm this is not expected. A boring explanation could be that the reduced ranks in At:Gm is mainly a result of sample bias in Gm.
+
+```{r testGmDuplicateWithOsSingleton}
+At1Os1 <-
+  filter(x, spcPair=="AtOs", len1==1, len2==1, rnkT=="rnksT")
+
+At1Gm2 <-
+  filter(x, spcPair=="AtGm", len1==1, len2==2, rnkT=="rnksT") %>% 
+  group_by(SPC1) %>%
+  summarise( meanRnk=mean(logRnk), 
+             rnk1=first(logRnk),
+             rnk2=last(logRnk) ) %>% 
+  mutate( inAt1Os1 = SPC1 %in% At1Os1$SPC1) %>% 
+  mutate( isAt1Os1 = as.factor(ifelse(inAt1Os1, "At:Os singleton","not At:Os singleton")) )
+
+
+At1Gm2 %>% 
+  ggplot(aes(x=rnk1,y=rnk2)) +
+  geom_point() +
+  geom_density2d() +
+  stat_poly_eq( formula = x~y,
+                aes(label = ..rr.label..), fontface="bold",color="red",
+                parse = TRUE) +
+  facet_wrap( ~ isAt1Os1 )
+
+
+
+```
+
+```{r}
+
+W <- wilcox.test(x = At1Gm2$meanRnk[At1Gm2$inAt1Os1],
+            y = At1Gm2$meanRnk[!At1Gm2$inAt1Os1],
+            alternative = "greater" )
+At1Gm2 %>% 
+  ggplot( aes(x=meanRnk, color=isAt1Os1)) + 
+  ggtitle( paste("Wilkox rank-sum test P =",signif(W$p.value,2))) +
+  xlab("Mean -log10(P) of At1:Gm2 orthologs") +
+  geom_density()
+```
+
+
+```{r}
+At1Os1 %>% 
+  transmute(SPC1=SPC1, logRnkAtOs=logRnk) %>% 
+  inner_join(At1Gm2, by="SPC1") %>% 
+  ggplot( aes(x=logRnkAtOs, y=meanRnk)) +
+  xlab("rank At1Os1") +
+  ylab("mean rank At1Gm2") +
+  geom_point() +
+  geom_density2d()
+```
+
+
+
+```{r eval=F}
+
+grpSize$AtGm %>% filter(len2==2, len1==1) %>% select(SPC1, SPC2) %>% .[1,] %>% as.list()
+
+
+
+treeID <- geneID2treeID$At["AT5G08400"]
+
+p4d <- treeDataToPhylo4d(fixTreeData(treeData[[treeID]]))
+p4d <- p4d[tipData(p4d)$taxonID %in% spc2taxid]
+tr <- getPhylo(p4d)
+
+library(ape)
+plot.phylo( nameTree(phylo =  tr))
+plot.phylo( tr)
+nodelabels(nodeData(p4d)$taxonName,frame = "none",adj=c(0,0.5),cex=0.6)
+markDupNodes(p4d)
+
+
+```
 
 
 
