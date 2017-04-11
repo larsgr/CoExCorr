@@ -1,20 +1,6 @@
 #include <Rcpp.h>
 using namespace Rcpp;
 
-// This is a simple example of exporting a C++ function to R. You can
-// source this function into an R session using the Rcpp::sourceCpp 
-// function (or via the Source button on the editor toolbar). Learn
-// more about Rcpp at:
-//
-//   http://www.rcpp.org/
-//   http://adv-r.had.co.nz/Rcpp.html
-//   http://gallery.rcpp.org/
-//
-
-
-
-
-// SplineBlend(curBin, splineOrder, knots, z[curSample], numBins);
 
 // [[Rcpp::export]]
 double SplineBlend( int curBin, int splineOrder, NumericVector knots, double v, int numBins){
@@ -53,15 +39,6 @@ double SplineBlend( int curBin, int splineOrder, NumericVector knots, double v, 
   return(value);
 }
 
-// [[Rcpp::export]]
-NumericVector SplineBlendBins( int splineOrder, NumericVector knots, double v, int numBins){
-  NumericVector retVal(numBins);
-  for(int curBin = 0; curBin < numBins; curBin++ ){
-    retVal[curBin] = SplineBlend( curBin, splineOrder, knots, v, numBins);
-  }
-  
-  return(retVal);
-}
 
 // [[Rcpp::export]]
 NumericVector SplineBlendAll( NumericVector z, NumericVector knots, int splineOrder, int numBins){
@@ -77,50 +54,7 @@ NumericVector SplineBlendAll( NumericVector z, NumericVector knots, int splineOr
   return(retVal);
 }
 
-// // w1, w2: weights for two genes [bins x samples]
-// // returns: p, the joint probability distribution [bins x bins]
-// // [[Rcpp::export]]
-// NumericVector hist2d(NumericMatrix w1, NumericMatrix w2){
-//   
-//   int i,j,k;
-//   int nBins = w1.nrow();
-//   int nSamples = w1.ncol();
-//   
-//   NumericMatrix retVal = NumericMatrix( nBins, nBins);
-//   
-//   for(i = 0; i < nSamples; i++){
-//     for(j = 0; j < nBins; j++){
-//       for(k = 0; k < nBins; k++){
-//         retVal(j,k) += w1(j,i) * w2(k,i);
-//       }
-//     }
-//   }
-//   // rowMeans(sapply(1:ncol(w1),function(k){w1[,k] %*% t(w2[,k])}))
-//   // p is mean of weights over all samples per 2d bin
-//   // p: array [numBins x genes]
-//   return( retVal / nSamples);
-// }
 
-// // [[Rcpp::export]]
-// double entropy2d(NumericMatrix w1, NumericMatrix w2){
-//   
-//   NumericVector pMat = hist2d(w1, w2);
-// 
-//   // calculate entropy
-//   // -sum(p * log2(p), na.rm = T)
-//   double H = 0.0; //returned entropy
-//   double p;
-//   int psize = pMat.size();
-//   for(int i = 0; i < psize; i++){
-//     p = pMat[i];
-//     // need to skip the 0's as it would generate NaN
-//     if( p > 0 ){
-//       H -= p*log2(p);
-//     }
-//   }
-//   return(H);
-// }
-// 
 
 // [[Rcpp::export]]
 NumericVector hist2dC(NumericVector weights, int i1, int i2){
@@ -143,10 +77,9 @@ NumericVector hist2dC(NumericVector weights, int i1, int i2){
       }
     }
   }
-  // rowMeans(sapply(1:ncol(w1),function(k){w1[,k] %*% t(w2[,k])}))
-  // p is mean of weights over all samples per 2d bin
-  // p: array [numBins x genes]
-  return( retVal / nSamples);
+  
+  // returns joint probability density matrix [bins x bins]:
+  return( retVal / nSamples );
 }
 
 // [[Rcpp::export]]
