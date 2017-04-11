@@ -1,0 +1,25 @@
+---
+title: "Compare methods"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, dev = 'svg')
+```
+
+## Aim of analysis
+
+Compare alternative methods of comupting the co-expression matrix:
+
+* MI vs PCC vs SCC
+* CLR: z-score vs rank vs nothing
+
+The method shall be applied to the At:Os using all samples but only the 1:1 genes. Further the CCS and ranks shall be calculated, but only the 1:1 ranks and CCS are needed. Method shall be judged by the 1:1 ranks.
+
+## Batch job workflow
+
+* get 1:1 geneIDs
+* for At and Os
+  * MI, PCC and SCC
+* calcScore(M1,M2,CLRmethod=c("z-score","rank","none"))
+  

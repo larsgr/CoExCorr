@@ -210,6 +210,16 @@ Rflow(
 ) -> fobj
 
 
+## Compare methods ####
+#
+#
+#
+
+source("subflows/makeCompareMethodsFlow.R")
+
+fl <- makeCompareMethodsFlow()
+
+fobj <- Rflow(flowname = "cm",fl)
 
 
 ##  submit flow ####
@@ -244,7 +254,7 @@ fobj <- flowr:::read_fobj("/mnt/users/lagr/flowr/runs/ZmRestMI_CCS-foo-20170301-
 jobs <- setdiff( getDownstreamFlowJobs(fl,c("ZmcalcMI")), "ZmcalcMI")
 
 # get jobNames from fobj
-jobs <- names(fobj@jobs) %>% .[grepl("Gm",.)]
+jobs <- names(fobj@jobs) %>% .[grepl("calcCor",.)]
 
 # get jobIDs for jobs with specific names
 jobIDs <- map(fobj@jobs[jobs], ~ .x@id)

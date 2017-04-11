@@ -139,7 +139,9 @@ mergeMI <- function(prefix, outDir){
 
 
 
-
+#
+# generate flow for calculating mi file "[outDir]/[prefix].mi"
+#
 makeMI_flow <- function(expMatFile,
                         geneIDsubsetFile,
                         outDir,

@@ -1,0 +1,192 @@
+---
+title: "Sample diversity"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+```{r loadLibraries,include=FALSE}
+library(ape)
+```
+
+
+## Aim of this analysis
+
+While comparing co-expression does not require having directly comparable samples, it does depend on certain qualities of the samples that are included. Exactly what qualities that are important is not known, but I have some ideas:
+
+* Diversity: Sampling as many different conditions, tissues and developmental stages as possible. This increases the resolution of the coexpression by sampling as many different expression patterns as possible.
+* Balance: Having too many samples from highly similar conditions might reduce the correlation. Several co-expression methods performs some sort of weighting of the samples to retain the balance (less weight on similar samples).
+* Cross species similarity: Sampling same types of conditions in two species should increase the chance of observing the same co-expression patterns and therefore make  it easier to compare.
+
+PCA and sample clustering can be used to give an idea of the diversity and balance in a set of samples, and by normalising ortholog expression by species it is possible to look at cross-species similarity.
+
+## Within species comparison in Gm
+
+In the within species comparison analysis there was a specific set of samples within Gm that performed extremely bad compared to the others. 
+
+```{r loadData}
+source("R/PODCfiles.R")
+source("R/orthoUtils.R")
+
+eGm <- readRDS(file = "data/expMat/EBI_Gm.RDS")
+eOs <- readRDS(file = "data/expMat/PODC_Os.RDS")
+gmRefOrthos <- readRDS("data/subsets/withinSpecies/Gm/refOrthos.RDS")
+gmSubsets <- readRDS("data/subsets/withinSpecies/Gm/sampleSubset.RDS")
+
+metaGm <- loadSampleMeta("Gm")
+metaOs <- loadSampleMeta("Os")
+
+GmOsOrthos <- loadOrthoTable("Gm","Os") 
+
+```
+
+```{r}
+x <- eGm[gmRefOrthos$At,]
+pca <- prcomp(t(x))
+
+col <- ifelse(gmSubsets$subsetMat[match(gmSubsets$studyID,rownames(gmSubsets$subsetMat)),4],"red","blue")
+
+library(rbokeh)
+figure() %>% ly_points(x=pca$x[,"PC1"],y=pca$x[,"PC2"],color = col, hover = metaGm)
+# plot(pca$x[,"PC1"],pca$x[,"PC2"],pch=20,col=col, main="")
+
+# problemStudyIDs <- unique(metaGm$Study[pca$x[,"PC1"] > 15])
+problemStudyIDs <- c("SRP006766", "SRP012991", "SRP021098",
+                     "SRP041709", "SRP041710", "SRP041932")
+```
+
+```{r eval=F}
+# 
+z <- t(x-rowMeans(x))
+r1 <- pca$rotation[, "PC1", drop = F]
+pc1 <- pca$x[, "PC1", drop = F]
+
+identical(z %*% r1, pc1)
+
+# what should be subtracted from z to make pc1=0
+
+range( (z - (pc1 %*% t(r1))) %*% r1  ) # ~ 0
+
+# reconstruct expression matrix without PC1
+X <- t(z - (pc1 %*% t(r1))) + rowMeans(x)
+
+source("Rjobs/calcMI.R")
+
+writeTempExpMat(x[,col=="blue"],"~/temp/blue.expmat")
+writeTempExpMat(x[,col=="red"],"~/temp/red.expmat")
+
+source("R/flowrUtils.R")
+
+makeMIjob <- function(outDir, prefix, arraySize=2){
+  subFlow(
+    prefix = prefix,
+    flowList = flowbind(
+      Rjob(sub_type = "scatter",
+           source = "Rjobs/calcMI.R",
+           fun = "calcMI",
+           paramMat = data.frame(arrayIdx=1:arraySize, arraySize,  prefix, outDir)),
+      
+      # mergeMI(prefix, outDir)
+      Rjob( prev_jobs = "calcMI", dep_type = "gather", sub_type = "serial",
+            source = "Rjobs/calcMI.R",
+            fun = "mergeMI",
+            paramMat = data.frame(prefix, outDir))
+    )
+  )
+}
+
+fobj <- Rflow(flowname = "quickMI",
+      makeMIjob(outDir = "~/temp",prefix = "blue"),
+      makeMIjob(outDir = "~/temp",prefix = "red") )
+
+source("R/loadTriMatrix.R")
+miRed <- loadTriMatrix(rownames(x),"~/temp/red.mi")
+miBlue <- loadTriMatrix(rownames(x),"~/temp/blue.mi")
+source("R/CLR.R")
+i <- rowMeans(x) > -3.32
+clrRed <- calcCLR(miRed[i,i])
+clrBlue <- calcCLR(miBlue[i,i])
+
+CCS3 <- cor(clrRed,clrBlue)
+
+# CCS <- cor(clrRed,clrBlue)
+median(-log10(1-quickRanks(CCS,rownames(x),rownames(x))))
+newRanksPlot()
+drawRanksCurve(quickRanks(CCS,rownames(x),rownames(x)),col="green")
+drawRanksCurve(quickRanksT(CCS,rownames(x),rownames(x)),col="green",lty=2)
+
+drawRanksCurve(quickRanks(CCS2,rownames(x),rownames(x)), col="purple")
+drawRanksCurve(quickRanksT(CCS2,rownames(x),rownames(x)), col="purple", lty=2)
+
+drawRanksCurve(quickRanks(CCS3,rownames(CCS3),rownames(CCS3)), col="orange")
+drawRanksCurve(quickRanksT(CCS3,rownames(CCS3),rownames(CCS3)), col="orange", lty=2)
+
+
+plot(rowMeans(CCS),colMeans(CCS))
+cor(clrRed[,2],clrBlue[,2])
+
+clrRed[ ,1]
+
+which(clrRed[,123]>10)
+x[which(clrRed[,123]>10),1:10]
+which(rowMeans(x) < -3.32)
+plot(miRed[123,1:100])
+hist(miRed)
+
+CCS[1:10,1:10]
+rnks <-
+  dir("data/subsets/withinSpecies/Gm",pattern="rnks",full.names = T) %>% 
+  set_names(sub(".*rnks_([0-9]+).RDS","\\1",.)) %>% 
+  map( readRDS )
+
+newRanksPlot()
+rnks %>% 
+  map("At") %>% 
+  map( ~ .x[[2]]) %>% 
+  map( drawRanksCurve )
+
+
+```
+
+
+The plot above shows all the Gm samples colored by the two subsets that resulted in very low scores. There is clearly a cluster of samples which is only included in one of the subsets. These samples seem to have in common that they are seed embryo development studies performed with laser dissection. 
+
+Seed development studies make up a majority of all the Gm samples which may explain why it compares poorly with other species with more balanced sampling.
+
+
+## Joint expression matrix Gm + Os
+
+The expression matrix of Gm and Os was joined by their 1:1 orthologs and PCA was performed. As expected, the first component separates the two species. The following components should then correlate with factors that are common in both species. The samples that made up the "problem" cluster in the above plot are marked in grey the following two plots. These samples clearly separates on PC2 just as they did on PC1 above. Note that Os also has a good spread along PC2 and that leaf samples (represented by squares) seem to separate on PC2 for both species. PC2 likely represents the "green" component, i.e. genes expressed during photosynthesis. Not sure how to interpret PC3 and PC4, but it is interresting to note that the grey cluster overlaps with Os leaf samples.
+
+```{r}
+x <-
+  GmOsOrthos %>% 
+  filter(otype == "1:1",
+         Gm %in% rownames(eGm),
+         Os %in% rownames(eOs)) %>% 
+  with( cbind(eGm[Gm, ],eOs[Os, ]) )
+
+y <- rbind(metaGm,metaOs)
+
+pca <- prcomp(t(x))
+
+col <- ifelse(y$Species=="Glycine max",
+              ifelse(y$Study %in% problemStudyIDs,"darkgrey","black"),"red")
+
+pch <- ifelse(is.na(y$Tissue),21, 21+(y$Tissue=="PO:0025034"))
+
+# plot( pca$x[ ,"PC1"],pca$x[ ,"PC2"], pch=20, col=col)
+# plot( pca$x[ ,"PC3"],pca$x[ ,"PC4"], pch=20, col=col)
+# legend("bottomleft",pch=20,col=c("black","darkgrey","red"),
+#        legend=c("Glycine max","Problem cluster (Gm)","Oryza sativa"))
+
+figure() %>% ly_points(x=pca$x[,"PC1"],y=pca$x[,"PC2"], hover = y,
+                       color = col, glyph=pch)
+figure() %>% ly_points(x=pca$x[,"PC3"],y=pca$x[,"PC4"], hover = y,
+                       color = col, glyph=pch)
+
+```
+
+##

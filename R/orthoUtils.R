@@ -1,6 +1,11 @@
 # Utility functions for handling orthology data from Ensembl biomart
 
 
+loadOrthoTable <- function(spc1,spc2){
+  readr::read_tsv(paste0("indata/orthologs/",min(spc1,spc2),"_",max(spc1,spc2),"_orthologs.txt"),
+                  col_types = cols(), progress = F)
+}
+
 
 ####
 #
