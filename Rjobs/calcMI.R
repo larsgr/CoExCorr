@@ -1,22 +1,14 @@
 # MI calculation
 
 library(purrr)
-
+library(BSplineMI) # from devtools::install_github("larsgr/BSplineMI")
 
 # write expression matrix in the format used for mi calculation
 writeTempExpMat <- function(expMat, filename){
   cat("writing",filename,"...\n")
-  write.table(expMat,file = filename,sep = " ",row.names = F, col.names = F)  
+  saveRDS(expMat,file = filename)  
 }
 
-# generate the command to execute genepair
-genepairMICmd <- function( tmpExpMatFile, miFile, ngenes, nexp,
-                         fromgene = 0, togene = ngenes,
-                         num_bins = 7, spline_order = 3){
-  paste("~/genepair/genepair 1", 
-        tmpExpMatFile, miFile, ngenes, nexp, 
-        fromgene, togene, num_bins, spline_order)
-}
 
 #### job step 1
 #
@@ -24,7 +16,8 @@ genepairMICmd <- function( tmpExpMatFile, miFile, ngenes, nexp,
 #
 # Load expression matrix
 # (optional) extract subset of matrix with given geneIDs
-# Save expression matrix for MI calculation
+# (alternatively) generate geneID file "{prefix}_geneIDs.RDS"
+# Save expression matrix for MI calculation "{prefix}_expmat.RDS"
 #
 prepMI <- function(expMatFile, geneIDsubsetFile = "", outDir, prefix){
   
@@ -54,21 +47,20 @@ prepMI <- function(expMatFile, geneIDsubsetFile = "", outDir, prefix){
   }
 
   # save expression matrix subset
-  tmpExpMatFile <- file.path(outDir,paste0(prefix,".expmat"))
+  tmpExpMatFile <- file.path(outDir,paste0(prefix,".expmat.RDS"))
   writeTempExpMat(expMat[geneIDs, ],tmpExpMatFile)
 }
 
 multiMI <- function(tmpExpMatFile, arrayIdx, arraySize){
-  cat("Calculating number of genes and samples in",tmpExpMatFile,"...\n")
-  x <- readLines(tmpExpMatFile)
-  ngenes <- length(x)
-  nexp <- length(strsplit(x[1],split = " ")[[1]])
-  rm(x)
-  cat("genes:",ngenes,"  samples:",nexp,"\n")
+  cat("Reading",tmpExpMatFile,"...\n")
+  x <- readRDS(tmpExpMatFile)
+  ngenes <- nrow(x)
+  nexp <- ncol(x)
+  cat("  genes:",ngenes,"  samples:",nexp,"\n")
   
   # Divide the load equally among the processes (arraySize = No. processes)
   #
-  # genepair generates a triangular matrix so we have to calculate the number of
+  # calcSplineMItoFile generates a triangular matrix so we have to calculate the number of
   # lines (i.e. genes) each process shall generate so that the number of 
   # operations (MI values) per process are approximately equal.
   totOps <- ((ngenes-1)*ngenes)/2
@@ -87,18 +79,20 @@ multiMI <- function(tmpExpMatFile, arrayIdx, arraySize){
   }
   togene[arraySize] <- ngenes
   
-  fromgene <- c(0, togene[-arraySize])
+  fromgene <- 1+c(0, togene[-arraySize])
   
   miFile <- sprintf("%s.mi.%03i",tmpExpMatFile,arrayIdx)
   
-  cmd <- genepairMICmd(tmpExpMatFile, miFile, ngenes, nexp,
-                       fromgene = fromgene[arrayIdx],
-                       togene = togene[arrayIdx] )
-
-  cat("CMD:",cmd,"\n")
+  cat("  job part:",arrayIdx,"/",arraySize,"\n")
+  cat("  genes:",fromgene[arrayIdx],"-",togene[arrayIdx],"\n")
   
-  # run genepair to calculate MI
-  system(cmd)
+  
+  cat("Calculating MI... writing to",miFile,"\n")
+  calcSplineMItoFile(x, nBins = 7, splineOrder = 3, 
+                     filename = miFile,
+                     fromRow = fromgene[arrayIdx],
+                     toRow = togene[arrayIdx])
+  
 }
 
 #### job step 2
@@ -106,7 +100,7 @@ multiMI <- function(tmpExpMatFile, arrayIdx, arraySize){
 # calc MI in parallel
 #
 calcMI <- function(arrayIdx, arraySize, prefix, outDir){
-  tmpExpMatFile <- file.path(outDir,paste0(prefix,".expmat"))
+  tmpExpMatFile <- file.path(outDir,paste0(prefix,".expmat.RDS"))
   multiMI(tmpExpMatFile, arrayIdx, arraySize)
 }
 
@@ -116,7 +110,7 @@ calcMI <- function(arrayIdx, arraySize, prefix, outDir){
 # clean up temp files
 #
 mergeMI <- function(prefix, outDir){
-  tmpExpMatFile <- file.path(outDir,paste0(prefix,".expmat"))
+  tmpExpMatFile <- file.path(outDir,paste0(prefix,".expmat.RDS"))
   
   miFile <- file.path(outDir,paste0(prefix,".mi"))
   
@@ -131,8 +125,7 @@ mergeMI <- function(prefix, outDir){
   system(cmd)
   
   # remove temp. files
-  unlink(dir(dirname(tmpExpMatFile), full.names = T,
-             pattern = paste0(basename(tmpExpMatFile),"\\.mi\\..+")))
+  unlink(miParts)
   unlink(tmpExpMatFile)
   
 }
@@ -148,7 +141,7 @@ makeMI_flow <- function(expMatFile,
                         prefix,
                         arraySize=20,
                         mem="4G"){
-  flowbind(
+  subFlow(prefix = prefix, flowList = flowbind(
     # prepMI(expMatFile, geneIDsubsetFile, outDir, prefix)
     Rjob(source = "Rjobs/calcMI.R",
          fun = "prepMI",
@@ -168,12 +161,12 @@ makeMI_flow <- function(expMatFile,
           fun = "mergeMI",
           paramMat = data.frame(prefix, outDir))
     
-  )
+  ))
 }
 
 # MI memory requirement calculation (assumes 7 bins):
 estMImem <- function(nGenes,nExp){
-  # The R session itself uses about 500MB..
+  # Add 510MB just in...
   paste0((nGenes*nExp*10*8) %/% 2^20 + 510,"M")
 }
 
