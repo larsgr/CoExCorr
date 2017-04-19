@@ -31,8 +31,8 @@ quickRanks <- function(CCS,spc1genes,spc2genes){
   # for each pair of orthologs
   # get the number of genes with lower or equal CCS
   mapply(spc1genes,spc2genes, FUN=function(spc1gene,spc2gene){
-    sum(CCS[spc1gene, ]<=CCS[spc1gene, spc2gene])
-  })/ncol(CCS)
+    mean(CCS[spc1gene, ]<=CCS[spc1gene, spc2gene],na.rm = T)
+  })
 }
 
 # Calculate ranks for specified ortholog pairs (Transposed version)
@@ -41,8 +41,8 @@ quickRanksT <- function(CCS,spc1genes,spc2genes){
   # for each pair of orthologs
   # get the number of genes with lower or equal CCS
   mapply(spc1genes,spc2genes, FUN=function(spc1gene,spc2gene){
-    sum(CCS[ ,spc1gene]<=CCS[spc2gene, spc1gene])
-  })/nrow(CCS)
+    mean(CCS[ ,spc1gene]<=CCS[spc2gene, spc1gene],na.rm = T)
+  })
 }
 
 # Automatically detect if quickRanks or quickRanksT should be used

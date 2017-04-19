@@ -1,6 +1,6 @@
 # Note: This function does not support matrices larger than 2^31 and can use a lot of memory
 calcCLR <- function(mi){
-  miZ <- pmax(scale(mi),0)^2
+  miZ <- pmax(scale(mi),0,na.rm = T)^2
   sqrt(miZ + t(miZ))
 }
 
@@ -27,7 +27,7 @@ calcCLRref <- function(mi, refOrthoIDs){
     # note: clr[ ,i] is the same as mi[refOrthoIDs,i]
     Zc <- (clr[ ,i] - miColMean[i])/miColSD[i]
     Zr <- (clr[ ,i] - miColMeanRef)/miColSDRef
-    clr[ ,i] <- sqrt(pmax(Zc,0)^2 + pmax(Zr,0)^2)
+    clr[ ,i] <- sqrt(pmax(Zc,0,na.rm = T)^2 + pmax(Zr,0,na.rm = T)^2)
   }
   
   return(clr)
