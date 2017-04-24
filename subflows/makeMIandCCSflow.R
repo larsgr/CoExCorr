@@ -68,7 +68,6 @@ makeMIandCCSflow <- function(MIFlowDef){
                outDir = "data/MI",
                geneIDsubsetFile = "" ) %>%
     pmap(makeMI_flow) %>% # make MI flowlist for each species
-    map2(MIFlowDef$spc, subFlow) %>%  # add spc names to job names
     reduce( flowbind )  # combine to single flowlist
   
   #

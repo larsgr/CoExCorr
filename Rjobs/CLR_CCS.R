@@ -1,3 +1,4 @@
+
 ####
 #
 # calculate CCS for all genes using 1:1 genes as ref.orthos
@@ -42,6 +43,7 @@ MI_CLR_CCSjob <- function(mi_file1, mi_file2,
   CCS <- mc_cor2(CLR[[1]],
                  CLR[[2]],
                  cores = cores)
+  # CCS <- WGCNA::cor( CLR[[1]], CLR[[2]], nThreads = cores)
 
   myLog("writing",outFile,"...\n")
   saveRDS(CCS, outFile)

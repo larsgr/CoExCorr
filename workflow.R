@@ -11,6 +11,7 @@ opts_flow$set(module_cmds = "source /etc/profile.d/modules.sh\nmodule load R/3.3
 
 source("R/flowrUtils.R")
 library(tidyverse)
+source("R/flowrSlurmUtils.R")
 
 
 ## processExpMat ####
@@ -22,29 +23,29 @@ library(tidyverse)
 fobj <- Rflow(
   flowname = "CoExCorr",
   
-  # #processExpMat_PODC(spc)
-  # Rjob(
-  #   jobName = "processExpMat_Os",
-  #   source = "Rjobs/processExpMat.R",
-  #   fun = "processExpMat_PODC",
-  #   paramMat = data.frame( spc = "Os" )
-  # ),
-  # 
-  # # processExpMat_PODC(spc)
-  # Rjob(
-  #   jobName = "processExpMat_At",
-  #   source = "Rjobs/processExpMat.R",
-  #   fun = "processExpMat_PODC",
-  #   paramMat = data.frame( spc = "At" )
-  # ),
-  #
-  # # processExpMat_PODC(spc)
-  # Rjob(
-  #   jobName = "processExpMat_Sl",
-  #   source = "Rjobs/processExpMat.R",
-  #   fun = "processExpMat_PODC",
-  #   paramMat = data.frame( spc = "Sl" )
-  # ),
+  #processExpMat_PODC(spc)
+  Rjob(
+    jobName = "processExpMat_Os",
+    source = "Rjobs/processExpMat.R",
+    fun = "processExpMat_PODC",
+    paramMat = data.frame( spc = "Os" )
+  ),
+
+  # processExpMat_PODC(spc)
+  Rjob(
+    jobName = "processExpMat_At",
+    source = "Rjobs/processExpMat.R",
+    fun = "processExpMat_PODC",
+    paramMat = data.frame( spc = "At" )
+  ),
+
+  # processExpMat_PODC(spc)
+  Rjob(
+    jobName = "processExpMat_Sl",
+    source = "Rjobs/processExpMat.R",
+    fun = "processExpMat_PODC",
+    paramMat = data.frame( spc = "Sl" )
+  ),
   
 
   # processExpMat_ebi( spc)
@@ -103,9 +104,9 @@ MIFlowDef <- tribble(
   ~spc, ~cpuReq, ~memReq, ~expMatFile,
   "Gm", 46,      "4G",    "data/expMat/EBI_Gm.RDS",
   "Zm", 50,      "10G",   "data/expMat/EBI_Zm.RDS",
-  "At", 30,      "3.5G",  "data/expMat/PODC_At.RDS",
+  "At", 30,      "4G",    "data/expMat/PODC_At.RDS",
   "Os", 22,      "2G",    "data/expMat/PODC_Os.RDS",
-  "Sl", 22,      "2.5G",  "data/expMat/PODC_Sl.RDS"
+  "Sl", 22,      "3G",    "data/expMat/PODC_Sl.RDS"
 )
 
 fl <- makeMIandCCSflow(MIFlowDef)
@@ -233,17 +234,22 @@ opts_flow$get()
 fobj <- submit_flow(fobj,execute = F)
 fobj <- submit_flow(fobj,execute = T, plot=F)
 
+# check status
 status(fobj)
+
+# check status (extended version)
+kable(qstatus(fobj,use_cache = F))
+
 # kill(fobj)
 system("sacct")
 
-plot_flow(fobj)
+plot_flow(fobj, detailed=FALSE)
 
 ## resurrect fobj ####
 #
 #
-fobj <- flowr:::read_fobj("/mnt/users/lagr/flowr/runs/RestCCS-foo-20170302-12-46-30-KdEy19MJ/")
-fobj <- flowr:::read_fobj("/mnt/users/lagr/flowr/runs/ZmRestMI_CCS-foo-20170301-17-51-04-DYc2i1Zu/")
+
+fobj <- flowr:::read_fobj("/mnt/users/lagr/flowr/runs/MI_CCS-foo-20170419-17-55-29-PjHcJ5XN/")
 
 ## example get jobIDs ####
 #
@@ -254,29 +260,19 @@ fobj <- flowr:::read_fobj("/mnt/users/lagr/flowr/runs/ZmRestMI_CCS-foo-20170301-
 jobs <- setdiff( getDownstreamFlowJobs(fl,c("ZmcalcMI")), "ZmcalcMI")
 
 # get jobNames from fobj
-jobs <- names(fobj@jobs) %>% .[grepl("calcCor",.)]
+jobs <- names(fobj@jobs) %>% .[grepl("calcCCS",.)]
 
 # get jobIDs for jobs with specific names
-jobIDs <- map(fobj@jobs[jobs], ~ .x@id)
+jobIDs <- unlist(map(fobj@jobs[jobs], ~ .x@id))
+
+jobIDs <- unlist(fobj@jobs$AtcalcMI@id)
 
 # get all jobIDs
 jobIDs <- map(fobj@jobs, ~ .x@id)
 
+jobIDs <- jobIDs[!sapply(jobIDs,"==","character(0)")]
 
-sacctFrmt<-"JobID,JobName,AllocTRES,MaxRSS,State,Elapsed,NodeList"
-
-# sacct for specified jobIDs
-jobStatus <- 
-  jobIDs %>% 
-  unlist() %>% 
-  paste(collapse=",") %>% 
-  paste0("sacct -P --format=",sacctFrmt," -j ",.) %>% 
-  system(intern=T) %>% 
-  paste(collapse = "\n") %>% 
-  read_delim(delim="|")
-
-jobStatus %>% 
-  mutate( JobName = sub(".*_[0-9]{3}\\.(.*-[0-9]+$)","\\1",JobName))
+getJobStatus(jobIDs)
 
 ## Example of rerun ####
 #
@@ -308,16 +304,18 @@ fobj <- flowr::rerun(fobj, select = jobs,kill = F)
 # fobj2 <- submit_flow(fobj,execute = T, .start_jid = 3) # execute
 
 # it works even with the dependencies because the fobj contains the jobIDs for
-# the previous job..
+# the previous job.. But it does not let you select specific jobs
 
-# However.. If I didn't have the fobj, would it work?.. the job ID's could have
-# been acquired from the directory, but i'm not sure if that has been
-# implemented
-
-# Using the rerun command, the flow is loaded from the run directory
+####
+#
+# example: using rerun
+#
 # WARNING! it kills all jobs by default unless kill=FALSE
-# It does not seem to care about dependencies... So cannot be used to 
+# rerun() removes dependancies from jobs that are not selected for rerunning, so 
+# cannot be used for jobs that depend on running jobs.
 
-# flowr::rerun("/mnt/users/lagr/flowr/runs/PODC_At_Subsets-foo-20170113-11-11-43-FsVnOK8I",
-#              start_from="PODC_At_HalfSubsetsJob3", kill=F) -> fobj
+jobs <- getRestJobs(fobj) # get name of jobs that needs to be rerun
+fobj <- flowr::rerun(fobj, select=jobs, kill=F) # resubmit
+
+
 
