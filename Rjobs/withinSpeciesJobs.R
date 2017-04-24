@@ -50,7 +50,7 @@ withinSpeciesPrepJob <- function(numberOfGenes = 4000,
 withinSpeciesJob <- function(spc, repNr, outDir = "data/subsets/withinSpecies", cores = 2){
   
   library(parallel)
-  source("Rjobs/calcMI.R")
+  library(BSplineMI)
   source("R/loadTriMatrix.R")
   source("R/CLR.R")
   source("R/calcRanks.R")
@@ -72,24 +72,8 @@ withinSpeciesJob <- function(spc, repNr, outDir = "data/subsets/withinSpecies", 
     studyIDsubset <- names(which(ss$subsetMat[ ,repNr] == isFirstHalf))
     sampleIDsubset <- ss$sampleID[ ss$studyID %in% studyIDsubset]
     
-    # Extract subset from expression write in temp dir
-    tmpExpFile <- file.path(tempdir(),paste0("tmpExp",ifelse(isFirstHalf,1,2)))
-    writeTempExpMat(expMat = expMat[ ,sampleIDsubset],filename = tmpExpFile)
-
-    # Run MI
-    tmpMIFile <- file.path(tempdir(),paste0("tmpMI",ifelse(isFirstHalf,1,2)))
-    cmd <- genepairMICmd(tmpExpFile, tmpMIFile, 
-                         ngenes = nrow(expMat), 
-                         nexp = length(sampleIDsubset))
-    
-    myLog("CMD:",cmd,"\n")
-    system(cmd)
-    
-    # Read mi
-    mi <- loadTriMatrix(geneIds = rownames(expMat), tmpMIFile)
-    
-    # Delete temp files
-    unlink(c(tmpExpFile,tmpMIFile))
+    # Extract subset from expression and calc MI
+    mi <- calcSplineMI(expMat[ ,sampleIDsubset],nBins = 7,splineOrder = 3)
     
     # Calc CLR
     calcCLR(mi)
