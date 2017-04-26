@@ -16,9 +16,9 @@ library(ggplot2)
 
 Compare sub-sets of samples from the same species to quantify the effect of the sample selection alone.
 
-## Sample selection
+## Random sample splitting
 
-For each species the samples are divided into two sub-sets by randomly selecting half of the studies. This ensures that the sub-sets do not contain any samples from the same study, such as replicate samples, but the number of samples in each sub-set will not be the same. The plot below gives an overview of the samples that were randomly selected for the subsets:
+For each species the samples are split into two sub-sets by randomly selecting half of the studies. This ensures that for each of the sub-set pairs, the two halves do not share any samples from the same study (such as biological replicates). Note that the number of samples in each sub-set will not be the same. Splitting was repeated 10 times to generate 10 sub-set pairs (later refered to as reps or sample sub-sets). The plot below gives an overview of the sample were split into sub-set pairs:
 
 ```{r sampleSelection, echo=F}
 
@@ -46,7 +46,7 @@ for( spc in names(ss)){
 
 ## Gene selection
 
-To reduce the computational cost, only a subset (n=4000) of the genes shall be included. Genes with 1:1 orthologs are prioritized and if that is not enough then also use genes with 1:2 orthologs.
+To reduce the computational cost, only a subset (n=4000) of the genes were included. Genes with 1:1 orthologs to several species are prioritized and if that is not enough (as is the case for Gm and Zm) then also include 2:1 orthologs.
 
 ## Reference "ortholog" selection
 
@@ -54,8 +54,16 @@ When comparing within species there are no orthologs and any gene can be used as
 
 ## results
 
+The plot below shows the distribution of the resulting ranks for all within-species subsets (10reps x 4reforthos x 2dir x 4000genes) together with the ranks from the between species tests. Median is marked with diamond. Ranks are shown in -log10(P) scale (i.e. a value >1 corresponds P<0.1 and a value >2 corresponds P<0.01 etc.). As expected the within-species ranks are higher than between species.
+
+
 ```{r fullRankscompare, fig.height=4, fig.width=9, dev='svg', echo=F}
 
+#
+# load within species ranks
+#
+# This is a table with 10reps x 5spcs rows where the rnks column contain a
+# nested list of 4refspcs x 2dir x 4000genes
 withinRnks <- 
   data_frame( filename = dir("data/subsets/withinSpecies",
                       recursive = T,pattern="rnks",full.names = T)) %>% 
@@ -64,27 +72,29 @@ withinRnks <-
           rnks = map(filename, readRDS))
 
 
-
-
-# load Full CCS ranks
+# load Full CCS ranks (including 1:N and N:N)
 fullRnks <-
-  data_frame( filename=dir("data/CCS",pattern="....11_rnks.RDS",full.names = T)) %>% 
-  mutate(spc1 = sub(".*/(..)(..)11_rnks.RDS","\\1",filename),
-         spc2 = sub(".*/(..)(..)11_rnks.RDS","\\2",filename),
+  data_frame( filename=dir("data/ranks",pattern="...._orthoRanks.RDS",full.names = T)) %>% 
+  mutate(spc1 = sub(".*/(..)(..)_orthoRanks.RDS","\\1",filename),
+         spc2 = sub(".*/(..)(..)_orthoRanks.RDS","\\2",filename),
          rnks = map(filename,readRDS),
          filename = NULL)
 
+# Filter only 1:1 and divide into transposed and not
 fullRnksT <-
   fullRnks %>% 
-  mutate( rnks = map(rnks, ~ .x[[2]]) ) %>%  #only keep the Transposed ranks
+  # filter 1:1 and select rnksT as rnks
+  mutate( rnks = map(rnks, ~ .x %>% filter(otype=="1:1") %>% transmute(rnks = rnksT)) ) %>% 
   mutate( spc1_=spc1, spc1=spc2, spc2=spc1_, spc1_=NULL) # swap spc1 and spc2
 
 fullRnks <- 
   fullRnks %>% 
-  mutate( rnks = map(rnks, ~ .x[[1]]) ) %>%  #only keep the not Transposed ranks
+  # filter 1:1 and select rnks
+  mutate( rnks = map(rnks, ~ .x %>% filter(otype=="1:1") %>% transmute(rnks = rnks)) ) %>% 
   bind_rows(fullRnksT) # combine with Transposed ranks
 
 
+# flatten the nested list
 withinRnksUnnested <- 
   withinRnks %>%
   mutate(spc1=spc, spc2=spc, typ="Within species",
@@ -96,6 +106,7 @@ fullRnks %>%
   unnest() %>% 
   mutate( typ="Between species" ) %>% 
   bind_rows( withinRnksUnnested ) %>% 
+  filter( !is.na(rnks) ) %>%  # remove NA values
   mutate( logRnks = -log10(1.0001-rnks)) %>% 
   ggplot( aes( x=spc2, y=logRnks, colour=typ) ) +
   facet_wrap(~as.factor(spc1), nrow=1) +
@@ -111,6 +122,7 @@ fullRnks %>%
 
 ```{r compareRepNr, fig.height=10, fig.width=5, dev='svg', echo=F}
 withinRnksUnnested %>% 
+  filter( !is.na(rnks) ) %>%  # remove NA values
   mutate( logRnks = -log10(1.0001-rnks)) %>% 
   ggplot( aes( x=repNr, y=logRnks) ) +
   facet_wrap(~as.factor(spc1), ncol=1) +
@@ -134,6 +146,7 @@ withinRnksUnnested2 <-
   unnest()
 
 withinRnksUnnested2 %>% 
+  filter( !is.na(rnks) ) %>%  # remove NA values
   mutate( logRnks = -log10(1.0001-rnks)) %>% 
   ggplot( aes( x=refOrthoSpc, y=logRnks) ) +
   facet_wrap(~as.factor(spc), nrow=1) +
@@ -158,6 +171,7 @@ nRefOrthos <-
 
 withinRnksUnnested2 %>% 
   group_by(spc,refOrthoSpc) %>% 
+  filter( !is.na(rnks) ) %>%  # remove NA values
   summarise( medLogRnk = median(-log10(1.0001-rnks))) %>% 
   right_join(nRefOrthos, by = c("spc", "refOrthoSpc")) %>% 
   ggplot( aes(x=n,y=medLogRnk)) +
@@ -174,7 +188,7 @@ Do the same genes tend to have same ranks regardless of choice of sample subset?
 * Expressed in many conditions
 * Large range of expression across samples.
 
-What is most surprising is that Gm and specifically Zm has mostly low or negative correlation with only a few pairs of replicates that have a rather high correlation. It seems that different combinations of samples leads to different sets of genes getting a high rank. This is most likely an effect of the type of samples
+There seems to be very little effect of ref.orthos and while there is differences between the species, it is far less than the variation between replicates.
 
 ```{r rankCorr, fig.height=4, fig.width=9, dev='svg', echo=F}
 # flatten one level of a nested list inside a data.frame
@@ -197,7 +211,7 @@ unnest1 <- function(x, .id){
   # unnest names
   x <- unnest(x)
   # add unnested(flattened) list
-  x[[names(listColIdx)]] <- flatten(l)
+  x[[names(listColIdx)]] <- purrr::flatten(l)
   
   return(x)
 }
@@ -205,7 +219,7 @@ unnest1 <- function(x, .id){
 # helper function to calculate the correlation between all the ranks
 rnksCor <- function(rnksList){
   do.call(cbind,rnksList) %>% 
-    cor() %>% 
+    cor(use = 'pairwise.complete.obs') %>% 
     .[lower.tri(.)]
 }
 

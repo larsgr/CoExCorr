@@ -21,5 +21,5 @@ The method shall be applied to the At:Os using all samples but only the 1:1 gene
 * get 1:1 geneIDs
 * for At and Os
   * MI, PCC and SCC
-* calcScore(M1,M2,CLRmethod=c("z-score","rank","none"))
+* calcScore(M1,M2,CLRmethod=c("z-score","rank","TOM","none")) 
   

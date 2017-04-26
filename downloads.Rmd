@@ -6,6 +6,8 @@ output: html_document
 ```{r loadLibraries, message=FALSE, include=FALSE}
 library(readxl)
 library(purrr)
+
+source("R/ebiRNAseqAPI.R")
 ```
 
 ```{r defFun, echo=F}
@@ -19,6 +21,12 @@ myDownload <- function(URL,
 }
 
 ```
+
+All the data used in this project was downloaded from public databases. Expression data and sample metadata was downloaded from the [PODC](http://plantomics.mind.meiji.ac.jp/podc/) website. Orthology, gene trees and gene metadata from http://plants.ensembl.org (mostly via biomart API). As some of the expression data from PODC used a different genome annotation the corresponding expression data was downloaded using [EBI's RNAseq API](http://www.ebi.ac.uk/fg/rnaseq/api/).
+
+## How to download everything
+
+Everything should be automatically downloaded by running the source of this document (downloads.Rmd) in R.
 
 ### From PODC
 
@@ -72,18 +80,18 @@ Note: The "readxl" package couldn't open the .xls files, but managed to open .xl
 Since the Zm and Gm data used in PODC was a different genome annotation than the one at Ensembl, expression data for the same samples is downloaded from EBI using the API described at http://www.ebi.ac.uk/fg/rnaseq/api/ 
 
 ```{r downloadRNAseqFromEBI, echo=FALSE, results='asis'}
-source("R/ebiRNAseqAPI.R")
-
 
 
 downloadRNAseq <- function(organism,dstPath,PODCmetadataFile = paste0("indata/",organism,"_sample.xlsx")){
   studyDataFile <- file.path(dstPath,"studyData.tsv")
+  
+  # read the PODC sample data
+  sampleData <- read_excel(PODCmetadataFile,col_types = rep("text",15))
+  
   #
   # get study data which include the url for the expression data
   #
   if(!file.exists(studyDataFile)){
-    # read the PODC sample data
-    sampleData <- read_excel(PODCmetadataFile,col_types = rep("text",15))
     
     # get all studies with RNAseq data for Zea mays
     studyData <- RNAseq_getStudiesByOrganism( organism )
@@ -92,15 +100,16 @@ downloadRNAseq <- function(organism,dstPath,PODCmetadataFile = paste0("indata/",
   
     studyData <- studyData[studyData$STATUS == "Complete", ]
     
-    cat( "Found expression data for",sum(sampleData$Study %in% studyData$STUDY_ID),
-         "of",nrow(sampleData),"samples\n")
-  
     dir.create(dstPath)
     write_tsv(studyData,path = studyDataFile)
   } else {
     studyData <- read_tsv(studyDataFile,col_types = cols())
   }
   
+  cat( "\n\n",paste0("__",organism,"__:"),"Found expression data for",
+       sum(sampleData$Study %in% studyData$STUDY_ID),
+       "of",nrow(sampleData),"samples. Downloading studies:\n\n")
+
   
   # the fpkm url is not among the data but it has the same path as the CRAM url
   FPKMurls <- studyData$GENES_FPKM_COUNTS_FTP_LOCATION
@@ -130,7 +139,7 @@ invisible(mapply(
 
 Because not all of the samples described in the metadata could be downloaded from EBI, the corresponding entries should be removed from the metadata to keep it consistant. Furthermore, the order of the samples in the metadata should be ordered to match the order in the PODC expression data.
 
-```{r fixMetadata, echo=FALSE}
+```{r fixMetadata, echo=FALSE, results='asis'}
 # fix metadata for expression downloaded from EBI
 
 source("R/PODCfiles.R")
@@ -140,6 +149,9 @@ dir.create(sampleMetaDir,showWarnings = F)
 
 fixEBImetadata <- function(spc, rnaSeqPath){
   
+  sampleMetaFile <- file.path(sampleMetaDir,paste0(spc,".RDS"))
+  
+
   # load sample metadata
   sampleData <- loadPODCmeta(spc)
   
@@ -160,8 +172,7 @@ fixEBImetadata <- function(spc, rnaSeqPath){
   sampleData <- subset(sampleData, Run %in% sampleIDs)
   
   
-  saveRDS(sampleData,file = file.path(sampleMetaDir,paste0(spc,".RDS")))
-
+  saveRDS(sampleData,file = sampleMetaFile)
 }
 
 invisible(mapply(
@@ -259,7 +270,7 @@ for( spc in spcs){
 ```
 
 
-```{r}
+```{r eval=FALSE, echo=FALSE}
 library(biomaRt)
 
 downloadParalogs <- function(species="athaliana", filename){

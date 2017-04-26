@@ -41,8 +41,8 @@ grpSize <-
   lapply(orthoRankTables, function( orthoTable ){
     orthoTbl2Array(orthoTable) %>%
       as_data_frame() %>% 
-      mutate( len1 = map_int(SPC1,length),
-              len2 = map_int(SPC2,length))
+      mutate( N1 = map_int(SPC1,length),
+              N2 = map_int(SPC2,length))
   })
 
 
@@ -50,7 +50,7 @@ grpSize <-
 
 ## Rank distribution and ortholog duplication level
 
-The following plots show the distribution of ranks (i.e. -log10( Pval ) ) for each pair of species and for ortholog duplication level. "len1" refers to the number of ortholog copies in the first species and len2 in the second. (e.g. a 1:2 ortholog in At:Os would be AtOs len1=1 len2=2)
+The following plots show the distribution of ranks (i.e. -log10( Pval ) ) for each pair of species and for ortholog duplication level. "N1" refers to the number of ortholog copies in the first species and N2 in the second. (e.g. a 1:2 ortholog in At:Os would be AtOs N1=1 N2=2)
 
 
 ```{r plotOrthoRanks, fig.height=9,fig.width=15}
@@ -63,13 +63,14 @@ x <-
   # gather rnksT and rnks to one column
   gather( rnks, rnksT, key="rnkT", value="rnk") %>% 
   # remove NA's
-  filter( !is.na(rnk), len1 < 6, len2 < 6) %>% 
+  filter( !is.na(rnk), N1 < 6, N2 < 6) %>% 
   # log transform ranks
   mutate( logRnk = -log10(1.0001-rnk) ) 
 
 x %>%  
-  ggplot( aes( x=as.factor(len1), y=logRnk) ) +
-  facet_grid(as.factor(len2) ~ as.factor(spcPair)) +
+  mutate( N1=as.factor(N1), N2=as.factor(N2)) %>% 
+  ggplot( aes( x=N1, y=logRnk) ) +
+  facet_grid(N2 ~ as.factor(spcPair)) +
   geom_violin() +
   stat_summary(fun.y=median, geom="point", size=2, shape=20)
 
@@ -78,10 +79,11 @@ The following heatmap of median ranks which may give a better overview:
 
 ```{r orthoMedRnkHeatmap}
 x %>% 
-  group_by(spcPair,len1,len2) %>% 
+  mutate( N1=as.factor(N1), N2=as.factor(N2)) %>% 
+  group_by(spcPair,N1,N2) %>% 
   summarise( medRnk = median(logRnk)) %>% 
   ggplot() +
-  geom_tile( aes(x=as.factor(len1),y=as.factor(len2),fill=medRnk) ) +
+  geom_tile( aes(x=N1,y=N2,fill=medRnk) ) +
   facet_wrap( ~ as.factor(spcPair), nrow=2 ) +
   scale_fill_gradientn( colors = RColorBrewer::brewer.pal(5,"Spectral"),
                        values = scales::rescale(4:0),
@@ -106,16 +108,16 @@ reverselog_trans <- function(base = exp(1)) {
 # take only the 1:1-4 and plot in a single figure
 x %>% 
   # Swap the order of spc so that the spc with a single ortholog comes first (e.g. AtOs 1:2 = At1:Os2, OsAt 1:2 = Os1:At2)
-  mutate( spcPair=ifelse(len2<len1,sub("(..)(..)","\\2\\1",spcPair), spcPair) ) %>%
+  mutate( spcPair=ifelse(N2<N1,sub("(..)(..)","\\2\\1",spcPair), spcPair) ) %>%
   mutate( Pval = 1.0001-rnk ) %>% 
-  group_by(spcPair,len1,len2,rnkT) %>% 
+  group_by(spcPair,N1,N2,rnkT) %>% 
   summarise( medPval = median(Pval)) %>% 
   # summarise( medRnk = median(logRnk)) %>% 
-  filter( (len1==1 & len2<5) | (len2==1 & len1<5) ) %>%
-  mutate( orthoDupLevel = paste0("1:",pmax(len1,len2))) %>%
+  filter( (N1==1 & N2<5) | (N2==1 & N1<5) ) %>%
+  mutate( orthoDupLevel = paste0("1:",pmax(N1,N2))) %>%
   ggplot() +
-  # geom_line( aes(x=pmax(len1,len2),y=medPval,color=spcPair,linetype=rnkT) ) +
-  geom_point( aes(x=as.factor(paste0("1:",pmax(len1,len2))),y=medPval) ) +
+  # geom_line( aes(x=pmax(N1,N2),y=medPval,color=spcPair,linetype=rnkT) ) +
+  geom_point( aes(x=as.factor(paste0("1:",pmax(N1,N2))),y=medPval) ) +
   theme_bw() +
   ylab("Median P-value") +
   xlab("Ortholog count") +
@@ -136,12 +138,19 @@ library(ggpmisc) # stat_poly_eq
 
 # 1:2
 x %>%
-  filter( len1==1, len2==2, rnkT=="rnks") %>% 
+  filter( N1==1, N2==2, rnkT=="rnks") %>% 
+  # annotate spcPar e.g. "AtGm" becomes "At1:Gm2"
+  mutate( spcPair = sub("(..)(..)","\\11:\\22",spcPair)) %>% 
+  # for each single ortholog (geneID in spc1)
   group_by(SPC1,spcPair) %>%
+  # separate the ranks for first and second (i.e. last) duplicate
   summarise( rnk1=first(logRnk),rnk2=last(logRnk))  %>%
   ggplot(aes(x=rnk1,y=rnk2)) +
+  ylab("-log10(P) of duplicate 2") +
+  xlab("-log10(P) of duplicate 1") +
   geom_point() +
   geom_density2d() +
+  coord_equal() +
   stat_poly_eq( formula = x~y,
                 aes(label = ..rr.label..), fontface="bold",color="red",
                 parse = TRUE) +
@@ -149,10 +158,10 @@ x %>%
 
 # 2:1
 x %>%
-  filter( len1==2, len2==1, rnkT=="rnksT") %>% 
-  mutate( spcPair = factor(sub("(..)(..)","\\2\\1",spcPair),
+  filter( N1==2, N2==1, rnkT=="rnksT") %>% 
+  mutate( spcPair = factor(sub("(..)(..)","\\21:\\12",spcPair),
                            ordered = T,
-                           levels = sub("(..)(..)","\\2\\1",unique(spcPair)))) %>% 
+                           levels = sub("(..)(..)","\\21:\\12",unique(spcPair)))) %>% 
   group_by(SPC2,spcPair) %>%
   summarise( rnk1=first(logRnk),rnk2=last(logRnk)) %>% 
   ggplot(aes(x=rnk1,y=rnk2)) +
@@ -170,10 +179,10 @@ The set of genes that have a 1:1 ortholog relationship between At and Os are mor
 
 ```{r testGmDuplicateWithOsSingleton}
 At1Os1 <-
-  filter(x, spcPair=="AtOs", len1==1, len2==1, rnkT=="rnksT")
+  filter(x, spcPair=="AtOs", N1==1, N2==1, rnkT=="rnksT")
 
 At1Gm2 <-
-  filter(x, spcPair=="AtGm", len1==1, len2==2, rnkT=="rnksT") %>% 
+  filter(x, spcPair=="AtGm", N1==1, N2==2, rnkT=="rnksT") %>% 
   group_by(SPC1) %>%
   summarise( meanRnk=mean(logRnk), 
              rnk1=first(logRnk),
@@ -216,6 +225,7 @@ At1Os1 %>%
   xlab("rank At1Os1") +
   ylab("mean rank At1Gm2") +
   geom_point() +
+  coord_equal() +
   geom_density2d()
 ```
 
@@ -223,7 +233,7 @@ At1Os1 %>%
 
 ```{r eval=F}
 
-grpSize$AtGm %>% filter(len2==2, len1==1) %>% select(SPC1, SPC2) %>% .[1,] %>% as.list()
+grpSize$AtGm %>% filter(N2==2, N1==1) %>% select(SPC1, SPC2) %>% .[1,] %>% as.list()
 
 
 

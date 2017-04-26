@@ -232,7 +232,7 @@ isValidJobID <- function(ids){
 #'
 #' @examples
 getJobStatus <- function(jobIDs){
-  sacctFrmt <- "JobID,JobName,AllocTRES,MaxRSS,State,Elapsed,NodeList"
+  sacctFrmt <- "JobID,JobName,AllocTRES,MaxRSS,State,Elapsed,TotalCPU,CPUTime,NodeList"
   
   # sacct for specified jobIDs
   jobIDs %>% 
