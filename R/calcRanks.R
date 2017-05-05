@@ -64,8 +64,10 @@ drawRanksCurve <- function(rnk,by=1/length(rnk),...){
 }
 
 # Creates a blank plot for drawing rank curves
-newRanksPlot <- function(main='Ortholog ranks'){
+newRanksPlot <- function(main='Ortholog ranks',
+                         ylab="Proportion of genes with rank above threshold",
+                         xlab="Rank threshold",...){
   plot(x=NULL, xlim=c(1,0),ylim=c(0,1),
-       ylab="Proportion of genes with rank above threshold",xlab="Rank threshold",
-       main=main)
+       ylab=ylab,xlab=xlab,
+       main=main,...)
 }

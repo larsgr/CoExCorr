@@ -29,56 +29,79 @@ getAt1Os1GeneIds <- function(outDir){
 }
 
 
-calcCor <- function( expMatFile, geneIDsubsetFile, outFile, method = c("pearson", "spearman")){
+calcCor <- function( expMatFile, geneIDsubsetFile, outFile, method){
+  library(BSplineMI)
   expMat <- readRDS(expMatFile)
   geneIDs <- readRDS(geneIDsubsetFile)
-  M <- cor(t(expMat[geneIDs, ]),method=method)
+  if( method == "MI"){
+    M <- calcSplineMI(expMat[geneIDs, ],nBins = 7,splineOrder = 3)
+  } else {
+    M <- cor(t(expMat[geneIDs, ]),method=method)
+  }
   saveRDS(M, outFile)
 }
 
 
 calcMutualRank <- function(M){
   # M is correlation matrix
-  # rank
-  t(apply(M,1, rank))*apply(M,2, rank)
+  N <- ncol(M)
+  MR <- log2(N/sqrt(t(apply(-M,1, rank))*apply(-M,2, rank)))
+  diag(MR) <- 0
+  return(MR)
+}
+
+calcTOM <- function(M){
+  M <- abs(M)
+  if(max(M)>1)
+    M <- M/max(M)
+  
+  TOM <- TOMsimilarity(M^6)
+  dimnames(TOM) <- dimnames(M)
+  diag(TOM) <- 0
+  return(TOM)
+}
+
+myLog <- function(...){
+  cat(format(Sys.time(),"[%Y-%m-%d %H:%M:%S]"),...)
 }
 
 # calculate rank scores using different CLR methods
-calcScore <- function(M1file,M2file,CLRmethod=c("z-score","rank","none"), outFile){
+# uses 8 processes
+calcScore <- function(M1file,M2file,outFile){
+  library(parallel)
+  library(WGCNA)
   source("R/loadTriMatrix.R")
   source("R/CLR.R")
   source("R/calcRanks.R")
+  source("R/mc_cor.R")
   
-  # load matrices
-  lapply(list( M1file, M2file ), function(Mfile){
-    # if filename ends with .mi then load as trimatrix
-    if(grepl(".mi$",Mfile)){
-      geneIDs <- readRDS(sub(".mi$","_At1Os1_geneIDs.RDS",Mfile))
-      return(loadTriMatrix(geneIds, filename = Mfile))
-    } else {
-      return(readRDS(Mfile))
-    }
-  }) -> M
+  Mfiles <- c(M1file,M2file)
+  spcs <- sub("(..).*","\\1",basename(Mfiles))
+  names(Mfiles) <- spcs
   
-  if( CLRmethod == "z-score" ){
-    cat("CLRmethod: z-score\n")
-    CLR <- lapply(M,calcCLR)
-  } else if(CLRmethod == "rank"){
-    cat("CLRmethod: rank\n")
-    CLR <- lapply(M,calcMutualRank)
-  } else{
-    cat("CLRmethod: none\n")
-    CLR <- M
+  myLog("Loading",Mfiles,"...\n")
+  M <- lapply( Mfiles, readRDS )
+  
+  mclapply( mc.cores = 4, 
+            c(CLR=calcCLR,MR=calcMutualRank,TOM=calcTOM, none=function(x){x}),
+            function(CLRmethod){
+    myLog("Calculating CLR..\n")
+    CLR <- mclapply(M,CLRmethod,mc.cores = 2)
+    myLog("Calculating CCS..\n")
+    CCS <- mc_cor2(CLR$At,CLR$Os,2)
+    myLog("Calculating Ranks..\n")
+    rnks <- list(
+      AtOs = quickRanks(CCS, spc1genes = rownames(CCS), spc2genes = colnames(CCS)),  
+      OsAt = quickRanksT(CCS, spc1genes = colnames(CCS), spc2genes = rownames(CCS))
+    )
+    return(rnks)
+  }) -> rnksAll # each correlation method
+  
+  saveRDS(rnksAll,outFile)
+  
+  if(any(sapply(rnksAll,methods::is,"try-error"))){
+    stop("Error inside mclapply. See ",outFile," for error message.")
   }
-  
-  # calc CCS
-  CCS <- cor(CLR[[1]],CLR[[2]])
-  
-  # calc ranks of diagonals, i.e. 1:1 orthos
-  rnks <- list(
-    quickRanks(CCS, spc1genes = rownames(CCS), spc2genes = colnames(CCS)),  
-    quickRanksT(CCS, spc1genes = colnames(CCS), spc2genes = rownames(CCS))
-  )
-  
-  saveRDS(rnks,outFile)
 }
+
+

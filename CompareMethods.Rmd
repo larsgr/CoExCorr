@@ -1,5 +1,5 @@
 ---
-title: "Compare methods"
+title: "Alternative methods"
 output: html_document
 ---
 
@@ -7,19 +7,105 @@ output: html_document
 knitr::opts_chunk$set(echo = FALSE, dev = 'svg')
 ```
 
+```{r loadPackages, include=FALSE}
+library(tidyverse)
+source("R/unnest1.R")
+source("R/calcRanks.R")
+```
+
 ## Aim of analysis
 
-Compare alternative methods of comupting the co-expression matrix:
+Compare alternative methods of computing the co-expression matrix before doing cross-species correlation (CCS).
 
-* MI vs PCC vs SCC
-* CLR: z-score vs rank vs nothing
+### Method
 
-The method shall be applied to the At:Os using all samples but only the 1:1 genes. Further the CCS and ranks shall be calculated, but only the 1:1 ranks and CCS are needed. Method shall be judged by the 1:1 ranks.
+Three different correlation methods were tested, namely:
 
-## Batch job workflow
+* MI: mutual information
+* PCC: pearson correlation
+* SCC: spearman correlation
 
-* get 1:1 geneIDs
-* for At and Os
-  * MI, PCC and SCC
-* calcScore(M1,M2,CLRmethod=c("z-score","rank","TOM","none")) 
+This was combined with several different methods of "normalising" the correlation matrix:
+
+* CLR: context likelihood ratio. (z-score with 0 as threashold)
+* MR: inspired by the "mutual rank" measure used in ATTED-II transformed with log2(N/MR)
+* none: just use correlation matrix directly
+* TOM: Topological overlap as used in WGCNA. First take absolute value of correlation matrix, then scale-free exponent (fixed to 6) followed by TOM.
+
+The methods were applied to At and Os using all samples but only the 1:1 genes (~9k genes). Ortholog ranks for all genes (i.e 1:1 orthologs) were calculated. 
+
+### results
+
+```{r loadData}
+
+# load rnks data and unnest to a data_frame
+rnks <-
+  data_frame(mtype=c("MI","PCC","SCC")) %>% 
+  mutate( 
+    filename = paste0("data/subsets/compareMethods/AtOs_rnks_",mtype,".RDS"),
+    rnks = map(filename,readRDS),
+    filename = NULL) %>% 
+  unnest1(.id = "clrMethod") %>% 
+  unnest1(.id = "dir")
+
+```
+
+The curves below represents the reverse cumulative distribution of ortholog rank scores (ORS). Whole and dotted lines represent the direction, i.e. from At->Os and Os->At respectively.
+
+```{r plotORSCurves, fig.height=4, fig.width=4}
+
+clrMethod2color <- setNames(RColorBrewer::brewer.pal(4,"Set1"),
+                            c("CLR", "MR", "none", "TOM"))
+
+par(pty="s")
+
+for( mtype_ in unique(rnks$mtype)){
+  newRanksPlot(main = mtype_)
+  rnks %>% 
+    filter(mtype==mtype_) %>% 
+    transmute( col = clrMethod2color[clrMethod],
+               lty = c(AtOs=1, OsAt=2)[dir],
+               rnk = rnks) %>% 
+    pwalk(drawRanksCurve, lwd=2)
+}
+
+legend("bottomright",legend = names(clrMethod2color),lty=1,col=clrMethod2color)
+
+par(pty="m")
   
+
+```
+
+```{r summarizeRnks}
+sumRnks <- 
+  rnks %>% 
+  mutate( medRnks = map_dbl(rnks, median),
+          meanRnks = map_dbl(rnks, mean),
+          rnks = NULL)
+
+
+
+```
+
+Below are the median and mean of the ORSs. (Higher is better)
+
+```{r plotMedianRanks, fig.height=3}
+sumRnks %>% 
+  ggplot(aes(y=medRnks,x=clrMethod,shape=dir, color=clrMethod)) +
+  scale_colour_brewer(palette = "Set1") +
+  geom_point(size=2) +
+  facet_grid(. ~ mtype) +
+  ylab("median ORS")
+```
+
+```{r plotMeanRanks, fig.height=3}
+sumRnks %>% 
+  ggplot(aes(y=meanRnks,x=clrMethod,shape=dir, color=clrMethod)) +
+  scale_colour_brewer(palette = "Set1") +
+  geom_point(size=2) +
+  facet_grid(. ~ mtype) +
+  ylab("mean ORS")
+```
+
+Judging by the median, the best combination is PCC+MR, but by the mean there is not much difference. TOM performs worse than doing nothing, but it might not be a fair comparison as it could be the choice of exponent.
+
