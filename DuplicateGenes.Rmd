@@ -165,8 +165,11 @@ x %>%
   group_by(SPC2,spcPair) %>%
   summarise( rnk1=first(logRnk),rnk2=last(logRnk)) %>% 
   ggplot(aes(x=rnk1,y=rnk2)) +
+  ylab("-log10(P) of duplicate 2") +
+  xlab("-log10(P) of duplicate 1") +
   geom_point() +
   geom_density2d() +
+  coord_equal() +
   stat_poly_eq( formula = x~y,
                 aes(label = ..rr.label..), fontface="bold",color="red",
                 parse = TRUE) + 
@@ -195,6 +198,7 @@ At1Gm2 %>%
   ggplot(aes(x=rnk1,y=rnk2)) +
   geom_point() +
   geom_density2d() +
+  coord_equal() +
   stat_poly_eq( formula = x~y,
                 aes(label = ..rr.label..), fontface="bold",color="red",
                 parse = TRUE) +
