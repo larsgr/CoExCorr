@@ -1,0 +1,14 @@
+name: "CoExCorr project"
+output_dir: "docs"
+exclude: ["*"]
+navbar:
+  title: "CoExCorr project"
+  left:
+    - text: "Duplicate genes"
+      href: DuplicateGenes.html
+    - text: "Within-species ranks"
+      href: WithinSpecies.html
+    - text: "Alternative methods"
+      href: CompareMethods.html
+    - text: "Data sources"
+      href: downloads.html

@@ -1,0 +1,41 @@
+---
+title: "CoExCorr"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Co-expression correlation - A method for cross-species comparative transcriptomics.
+
+This study explores a method for indirectly comparing gene expression data from different species by correlating the co-expression of orthologous genes.
+
+The final output of the algorithm is a measure of expression similarity between any two genes in two different species. These are the steps:
+
+* MI: Calculate mutual information (MI) co-expression matrix for each species.
+* CLR: "Normalize" the co-expression using the CLR algorithm.
+* Coexpression Correlation Score (CCS): Compare co-expression matrices by calculating the pearson correlation coefficient (PCC) between co-expression matrices using a set of 1:1 orthologs as reference.
+
+### Data sources
+
+To test the algorithm we used public gene expression data from five different plants:
+
+* Arabidopsis thaliana (At)
+* Solanum lycopersicum (Sl)
+* Glycine max (Gm)
+* Oryza sativa (Os)
+* Zea mays (Zm)
+
+The species were chosen because of the amount of available expression data. All the data used has been downloaded from public databases, details on the [data sources](downloads.html) page.
+
+### CCS Performance evaluation
+
+To evaluate the perfomance of the algorithm we calculate, for each ortholog pair, the rank of the CCS of the ortholog compared to the CCS of all non-orthologs of the gene. This rank is normalised to get a value between 0 and 1 (which we call the ortholog ranks score (ORS)) where 0 represents the highest CCS and 1 the lowest. The idea is that the orthologs should have a more similar expression pattern, i.e. higher CCS, than when comparing with a random gene. ORS can also be interpreted as one minus the P-value (i.e. ORS = 1-P), and is plotted as -log10(P).
+
+As the different species are expected to have differences in gene regulation, we also test the score within the same species by dividing the expression data in two subsets and compare them as if they were from different species. This way we test only the effect of the method and the effect of the sample choice. See [within-species ranks](WithinSpecies.html).
+
+### Gene regulation divergence of duplicated genes
+
+In the [duplicate genes](DuplicateGenes.html) analysis we look at the expression similarity of 1-to-many and many-to-many orthologs, i.e. orthologs with duplications.
+
