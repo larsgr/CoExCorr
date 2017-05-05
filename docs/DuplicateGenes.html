@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+<head>
+
+<meta charset="utf-8">
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<meta name="generator" content="pandoc" />
+
+
+
+
+<title>Comparison of duplicated genes</title>
+
+<script src="site_libs/jquery-1.11.3/jquery.min.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link href="site_libs/bootstrap-3.3.5/css/bootstrap.min.css" rel="stylesheet" />
+<script src="site_libs/bootstrap-3.3.5/js/bootstrap.min.js"></script>
+<script src="site_libs/bootstrap-3.3.5/shim/html5shiv.min.js"></script>
+<script src="site_libs/bootstrap-3.3.5/shim/respond.min.js"></script>
+<script src="site_libs/navigation-1.1/tabsets.js"></script>
+<link href="site_libs/highlightjs-1.1/default.css" rel="stylesheet" />
+<script src="site_libs/highlightjs-1.1/highlight.js"></script>
+
+<style type="text/css">code{white-space: pre;}</style>
+<style type="text/css">
+  pre:not([class]) {
+    background-color: white;
+  }
+</style>
+<script type="text/javascript">
+if (window.hljs && document.readyState && document.readyState === "complete") {
+   window.setTimeout(function() {
+      hljs.initHighlighting();
+   }, 0);
+}
+</script>
+
+
+
+<style type="text/css">
+h1 {
+  font-size: 34px;
+}
+h1.title {
+  font-size: 38px;
+}
+h2 {
+  font-size: 30px;
+}
+h3 {
+  font-size: 24px;
+}
+h4 {
+  font-size: 18px;
+}
+h5 {
+  font-size: 16px;
+}
+h6 {
+  font-size: 12px;
+}
+.table th:not([align]) {
+  text-align: left;
+}
+</style>
+
+
+</head>
+
+<body>
+
+<style type = "text/css">
+.main-container {
+  max-width: 940px;
+  margin-left: auto;
+  margin-right: auto;
+}
+code {
+  color: inherit;
+  background-color: rgba(0, 0, 0, 0.04);
+}
+img {
+  max-width:100%;
+  height: auto;
+}
+.tabbed-pane {
+  padding-top: 12px;
+}
+button.code-folding-btn:focus {
+  outline: none;
+}
+</style>
+
+
+<style type="text/css">
+/* padding for bootstrap navbar */
+body {
+  padding-top: 51px;
+  padding-bottom: 40px;
+}
+/* offset scroll position for anchor links (for fixed navbar)  */
+.section h1 {
+  padding-top: 56px;
+  margin-top: -56px;
+}
+
+.section h2 {
+  padding-top: 56px;
+  margin-top: -56px;
+}
+.section h3 {
+  padding-top: 56px;
+  margin-top: -56px;
+}
+.section h4 {
+  padding-top: 56px;
+  margin-top: -56px;
+}
+.section h5 {
+  padding-top: 56px;
+  margin-top: -56px;
+}
+.section h6 {
+  padding-top: 56px;
+  margin-top: -56px;
+}
+</style>
+
+<script>
+// manage active state of menu based on current page
+$(document).ready(function () {
+  // active menu anchor
+  href = window.location.pathname
+  href = href.substr(href.lastIndexOf('/') + 1)
+  if (href === "")
+    href = "index.html";
+  var menuAnchor = $('a[href="' + href + '"]');
+
+  // mark it active
+  menuAnchor.parent().addClass('active');
+
+  // if it's got a parent navbar menu mark it active as well
+  menuAnchor.closest('li.dropdown').addClass('active');
+});
+</script>
+
+
+<div class="container-fluid main-container">
+
+<!-- tabsets -->
+<script>
+$(document).ready(function () {
+  window.buildTabsets("TOC");
+});
+</script>
+
+<!-- code folding -->
+
+
+
+
+
+
+<div class="navbar navbar-default  navbar-fixed-top" role="navigation">
+  <div class="container">
+    <div class="navbar-header">
+      <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar">
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+      </button>
+      <a class="navbar-brand" href="index.html">CoExCorr project</a>
+    </div>
+    <div id="navbar" class="navbar-collapse collapse">
+      <ul class="nav navbar-nav">
+        <li>
+  <a href="DuplicateGenes.html">Duplicate genes</a>
+</li>
+<li>
+  <a href="WithinSpecies.html">Within-species ranks</a>
+</li>
+<li>
+  <a href="CompareMethods.html">Alternative methods</a>
+</li>
+<li>
+  <a href="downloads.html">Data sources</a>
+</li>
+      </ul>
+      <ul class="nav navbar-nav navbar-right">
+        
+      </ul>
+    </div><!--/.nav-collapse -->
+  </div><!--/.container -->
+</div><!--/.navbar -->
+
+<div class="fluid-row" id="header">
+
+
+
+<h1 class="title toc-ignore">Comparison of duplicated genes</h1>
+
+</div>
+
+
+<div id="aim-of-this-analysis" class="section level2">
+<h2>Aim of this analysis</h2>
+<p>investigate the expression similarity of duplicated genes</p>
+</div>
+<div id="rank-distribution-and-ortholog-duplication-level" class="section level2">
+<h2>Rank distribution and ortholog duplication level</h2>
+<p>The following plots show the distribution of ranks (i.e. -log10( Pval ) ) for each pair of species and for ortholog duplication level. “N1” refers to the number of ortholog copies in the first species and N2 in the second. (e.g. a 1:2 ortholog in At:Os would be AtOs N1=1 N2=2)</p>
+<p><img src="DuplicateGenes_files/figure-html/plotOrthoRanks-1.svg" width="1440" /> The following heatmap of median ranks which may give a better overview:</p>
+<p><img src="DuplicateGenes_files/figure-html/orthoMedRnkHeatmap-1.svg" width="672" /></p>
+<p>The main observation is that 1:1 orthologs clearly tend to have higher ranks than orthologs with any number of duplicates and that the ranks get lower when the number of orthologs increases. (Note that there is increased uncertainty in the median of the larger groups as they are more rare). An interresting pattern is that orthologs with either one or two copies in Gm seem to have the approximately same ranks. A possible explanation could be the recent duplication in Gm and that a high portion of the genes that prefer occurr in single copies haven’t had time to lose its copy.</p>
+<p><img src="DuplicateGenes_files/figure-html/OrthoRankTrend-1.svg" width="672" /></p>
+</div>
+<div id="orthologs" class="section level2">
+<h2>1:2 orthologs</h2>
+<p>If we look at 1:2 orthologs we can plot the score between the single ortholog and the two duplicate orthologs. The following plots show the -log10(P) transformed rank for each of the two alternative orthologs plotted against each other. If both of the duplicate genes have retained the same function we expect them to be similar, while if one of the duplicates have taken a different function (i.e. neo- or sub-functionalized) they may have diverged expressed patterns. Since the score for each of the duplicates also depends on whether the single ortholog has diverged it is however expected the scores correlated to a certain degree. There is one plot for each species-pair and the order of the species indicates which species that contain the duplicate, e.g. AtGm contains the At1:Gm2 orthologs.</p>
+<p><img src="DuplicateGenes_files/figure-html/unnamed-chunk-1-1.svg" width="672" /><img src="DuplicateGenes_files/figure-html/unnamed-chunk-1-2.svg" width="672" /></p>
+<p>The set of genes that have a 1:1 ortholog relationship between At and Os are more likely to be essential and therefore have a conserved expression pattern. Given the recent WGD in Gm there are many of these genes that have duplicate orthologs in Gm (i.e. At1:Gm2). The plots below compare the ranks distribution of two groups of At1:Gm2 orthologs, those that are At1:Os1 (singleton) and those that are not. The singletons are expected to be under selective pressure to retain the expression pattern. It does not seem to be any significant difference between the groups regarding the correlation between the duplicate ranks, indicating that different selection pressure does not affect difference in the expression between the two duplicates since the duplication in Gm. However, there is a significant difference in the mean ranks of the two duplicates in the two groups, i.e. the singleton group tend to have higher ranks. This might indicate that most of the expression divergence occured in the At lineage or before the WGD in the Gm lineage. If we compare the ranks of the At1:Os1 orthologs with the corresponding mean ranks of the At1:Gm2 orthologs we see that they correlate well but that At1:Gm2 rarely have higher rank than At1:Os1. As At:Os is more distantly related than At:Gm this is not expected. A boring explanation could be that the reduced ranks in At:Gm is mainly a result of sample bias in Gm.</p>
+<p><img src="DuplicateGenes_files/figure-html/testGmDuplicateWithOsSingleton-1.svg" width="672" /></p>
+<p><img src="DuplicateGenes_files/figure-html/unnamed-chunk-2-1.svg" width="672" /></p>
+<p><img src="DuplicateGenes_files/figure-html/unnamed-chunk-3-1.svg" width="672" /></p>
+</div>
+
+
+
+
+</div>
+
+<script>
+
+// add bootstrap table styles to pandoc tables
+function bootstrapStylePandocTables() {
+  $('tr.header').parent('thead').parent('table').addClass('table table-condensed');
+}
+$(document).ready(function () {
+  bootstrapStylePandocTables();
+});
+
+
+</script>
+
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    script.src  = "https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML";
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script>
+
+</body>
+</html>

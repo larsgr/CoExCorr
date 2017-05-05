@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+<head>
+
+<meta charset="utf-8">
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<meta name="generator" content="pandoc" />
+
+
+
+
+<title>Within species comparison</title>
+
+<script src="site_libs/jquery-1.11.3/jquery.min.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link href="site_libs/bootstrap-3.3.5/css/bootstrap.min.css" rel="stylesheet" />
+<script src="site_libs/bootstrap-3.3.5/js/bootstrap.min.js"></script>
+<script src="site_libs/bootstrap-3.3.5/shim/html5shiv.min.js"></script>
+<script src="site_libs/bootstrap-3.3.5/shim/respond.min.js"></script>
+<script src="site_libs/navigation-1.1/tabsets.js"></script>
+<link href="site_libs/highlightjs-1.1/default.css" rel="stylesheet" />
+<script src="site_libs/highlightjs-1.1/highlight.js"></script>
+
+<style type="text/css">code{white-space: pre;}</style>
+<style type="text/css">
+  pre:not([class]) {
+    background-color: white;
+  }
+</style>
+<script type="text/javascript">
+if (window.hljs && document.readyState && document.readyState === "complete") {
+   window.setTimeout(function() {
+      hljs.initHighlighting();
+   }, 0);
+}
+</script>
+
+
+
+<style type="text/css">
+h1 {
+  font-size: 34px;
+}
+h1.title {
+  font-size: 38px;
+}
+h2 {
+  font-size: 30px;
+}
+h3 {
+  font-size: 24px;
+}
+h4 {
+  font-size: 18px;
+}
+h5 {
+  font-size: 16px;
+}
+h6 {
+  font-size: 12px;
+}
+.table th:not([align]) {
+  text-align: left;
+}
+</style>
+
+
+</head>
+
+<body>
+
+<style type = "text/css">
+.main-container {
+  max-width: 940px;
+  margin-left: auto;
+  margin-right: auto;
+}
+code {
+  color: inherit;
+  background-color: rgba(0, 0, 0, 0.04);
+}
+img {
+  max-width:100%;
+  height: auto;
+}
+.tabbed-pane {
+  padding-top: 12px;
+}
+button.code-folding-btn:focus {
+  outline: none;
+}
+</style>
+
+
+<style type="text/css">
+/* padding for bootstrap navbar */
+body {
+  padding-top: 51px;
+  padding-bottom: 40px;
+}
+/* offset scroll position for anchor links (for fixed navbar)  */
+.section h1 {
+  padding-top: 56px;
+  margin-top: -56px;
+}
+
+.section h2 {
+  padding-top: 56px;
+  margin-top: -56px;
+}
+.section h3 {
+  padding-top: 56px;
+  margin-top: -56px;
+}
+.section h4 {
+  padding-top: 56px;
+  margin-top: -56px;
+}
+.section h5 {
+  padding-top: 56px;
+  margin-top: -56px;
+}
+.section h6 {
+  padding-top: 56px;
+  margin-top: -56px;
+}
+</style>
+
+<script>
+// manage active state of menu based on current page
+$(document).ready(function () {
+  // active menu anchor
+  href = window.location.pathname
+  href = href.substr(href.lastIndexOf('/') + 1)
+  if (href === "")
+    href = "index.html";
+  var menuAnchor = $('a[href="' + href + '"]');
+
+  // mark it active
+  menuAnchor.parent().addClass('active');
+
+  // if it's got a parent navbar menu mark it active as well
+  menuAnchor.closest('li.dropdown').addClass('active');
+});
+</script>
+
+
+<div class="container-fluid main-container">
+
+<!-- tabsets -->
+<script>
+$(document).ready(function () {
+  window.buildTabsets("TOC");
+});
+</script>
+
+<!-- code folding -->
+
+
+
+
+
+
+<div class="navbar navbar-default  navbar-fixed-top" role="navigation">
+  <div class="container">
+    <div class="navbar-header">
+      <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar">
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+      </button>
+      <a class="navbar-brand" href="index.html">CoExCorr project</a>
+    </div>
+    <div id="navbar" class="navbar-collapse collapse">
+      <ul class="nav navbar-nav">
+        <li>
+  <a href="DuplicateGenes.html">Duplicate genes</a>
+</li>
+<li>
+  <a href="WithinSpecies.html">Within-species ranks</a>
+</li>
+<li>
+  <a href="CompareMethods.html">Alternative methods</a>
+</li>
+<li>
+  <a href="downloads.html">Data sources</a>
+</li>
+      </ul>
+      <ul class="nav navbar-nav navbar-right">
+        
+      </ul>
+    </div><!--/.nav-collapse -->
+  </div><!--/.container -->
+</div><!--/.navbar -->
+
+<div class="fluid-row" id="header">
+
+
+
+<h1 class="title toc-ignore">Within species comparison</h1>
+
+</div>
+
+
+<div id="aim-of-the-analysis" class="section level1">
+<h1>Aim of the analysis</h1>
+<p>Compare sub-sets of samples from the same species to quantify the effect of the sample selection alone.</p>
+<div id="random-sample-splitting" class="section level2">
+<h2>Random sample splitting</h2>
+<p>For each species the samples are split into two sub-sets by randomly selecting half of the studies. This ensures that for each of the sub-set pairs, the two halves do not share any samples from the same study (such as biological replicates). Note that the number of samples in each sub-set will not be the same. Splitting was repeated 10 times to generate 10 sub-set pairs (later refered to as reps or sample sub-sets). The plot below gives an overview of the sample were split into sub-set pairs:</p>
+<p><img src="WithinSpecies_files/figure-html/sampleSelection-1.png" width="672" /><img src="WithinSpecies_files/figure-html/sampleSelection-2.png" width="672" /><img src="WithinSpecies_files/figure-html/sampleSelection-3.png" width="672" /><img src="WithinSpecies_files/figure-html/sampleSelection-4.png" width="672" /><img src="WithinSpecies_files/figure-html/sampleSelection-5.png" width="672" /></p>
+</div>
+<div id="gene-selection" class="section level2">
+<h2>Gene selection</h2>
+<p>To reduce the computational cost, only a subset (n=4000) of the genes were included. Genes with 1:1 orthologs to several species are prioritized and if that is not enough (as is the case for Gm and Zm) then also include 2:1 orthologs.</p>
+</div>
+<div id="reference-ortholog-selection" class="section level2">
+<h2>Reference “ortholog” selection</h2>
+<p>When comparing within species there are no orthologs and any gene can be used as a reference “ortholog”. To make the comparison more similar to that of the between species we use the 1:1 orthologs to each of the other species as reference orthologs. Ranks are calculated once for each set of 1:1 orthologs against the other species. In later plots “refOrthoSpc” refer to the different sets of orthologs.</p>
+</div>
+<div id="results" class="section level2">
+<h2>results</h2>
+<p>The plot below shows the distribution of the resulting ranks for all within-species subsets (10reps x 4reforthos x 2dir x 4000genes) together with the ranks from the between species tests. Median is marked with diamond. Ranks are shown in -log10(P) scale (i.e. a value &gt;1 corresponds P&lt;0.1 and a value &gt;2 corresponds P&lt;0.01 etc.). As expected the within-species ranks are higher than between species.</p>
+<p><img src="WithinSpecies_files/figure-html/fullRankscompare-1.svg" width="864" /></p>
+</div>
+<div id="compare-randomized-subsets" class="section level2">
+<h2>compare randomized subsets</h2>
+<p><img src="WithinSpecies_files/figure-html/compareRepNr-1.svg" width="480" /></p>
+</div>
+<div id="compare-ref.orthos" class="section level2">
+<h2>compare ref.orthos</h2>
+<p><img src="WithinSpecies_files/figure-html/compRefOrthos-1.svg" width="864" /></p>
+<p><img src="WithinSpecies_files/figure-html/nRefcompare-1.svg" width="672" /></p>
+</div>
+<div id="rank-stability" class="section level2">
+<h2>rank stability</h2>
+<p>Do the same genes tend to have same ranks regardless of choice of sample subset? The plot below shows the correlation between the ranks in the subset replicates. There is a clear tendency to correlate even though it varies between the replicates, so in general there seems to be certain genes that tend to have higher ranks than others. This is expected as there are several gene specific properties that can affects its likelihood to get a high rank. Example of properties that are necessary to achieve a stable high rank:</p>
+<ul>
+<li>Many co-expressed genes</li>
+<li>Expressed in many conditions</li>
+<li>Large range of expression across samples.</li>
+</ul>
+<p>There seems to be very little effect of ref.orthos and while there is differences between the species, it is far less than the variation between replicates.</p>
+<p><img src="WithinSpecies_files/figure-html/rankCorr-1.svg" width="864" /></p>
+</div>
+</div>
+
+
+
+
+</div>
+
+<script>
+
+// add bootstrap table styles to pandoc tables
+function bootstrapStylePandocTables() {
+  $('tr.header').parent('thead').parent('table').addClass('table table-condensed');
+}
+$(document).ready(function () {
+  bootstrapStylePandocTables();
+});
+
+
+</script>
+
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    script.src  = "https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML";
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script>
+
+</body>
+</html>

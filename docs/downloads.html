@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+<head>
+
+<meta charset="utf-8">
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<meta name="generator" content="pandoc" />
+
+
+
+
+<title>Data sources</title>
+
+<script src="site_libs/jquery-1.11.3/jquery.min.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link href="site_libs/bootstrap-3.3.5/css/bootstrap.min.css" rel="stylesheet" />
+<script src="site_libs/bootstrap-3.3.5/js/bootstrap.min.js"></script>
+<script src="site_libs/bootstrap-3.3.5/shim/html5shiv.min.js"></script>
+<script src="site_libs/bootstrap-3.3.5/shim/respond.min.js"></script>
+<script src="site_libs/navigation-1.1/tabsets.js"></script>
+<link href="site_libs/highlightjs-1.1/default.css" rel="stylesheet" />
+<script src="site_libs/highlightjs-1.1/highlight.js"></script>
+
+<style type="text/css">code{white-space: pre;}</style>
+<style type="text/css">
+  pre:not([class]) {
+    background-color: white;
+  }
+</style>
+<script type="text/javascript">
+if (window.hljs && document.readyState && document.readyState === "complete") {
+   window.setTimeout(function() {
+      hljs.initHighlighting();
+   }, 0);
+}
+</script>
+
+
+
+<style type="text/css">
+h1 {
+  font-size: 34px;
+}
+h1.title {
+  font-size: 38px;
+}
+h2 {
+  font-size: 30px;
+}
+h3 {
+  font-size: 24px;
+}
+h4 {
+  font-size: 18px;
+}
+h5 {
+  font-size: 16px;
+}
+h6 {
+  font-size: 12px;
+}
+.table th:not([align]) {
+  text-align: left;
+}
+</style>
+
+
+</head>
+
+<body>
+
+<style type = "text/css">
+.main-container {
+  max-width: 940px;
+  margin-left: auto;
+  margin-right: auto;
+}
+code {
+  color: inherit;
+  background-color: rgba(0, 0, 0, 0.04);
+}
+img {
+  max-width:100%;
+  height: auto;
+}
+.tabbed-pane {
+  padding-top: 12px;
+}
+button.code-folding-btn:focus {
+  outline: none;
+}
+</style>
+
+
+<style type="text/css">
+/* padding for bootstrap navbar */
+body {
+  padding-top: 51px;
+  padding-bottom: 40px;
+}
+/* offset scroll position for anchor links (for fixed navbar)  */
+.section h1 {
+  padding-top: 56px;
+  margin-top: -56px;
+}
+
+.section h2 {
+  padding-top: 56px;
+  margin-top: -56px;
+}
+.section h3 {
+  padding-top: 56px;
+  margin-top: -56px;
+}
+.section h4 {
+  padding-top: 56px;
+  margin-top: -56px;
+}
+.section h5 {
+  padding-top: 56px;
+  margin-top: -56px;
+}
+.section h6 {
+  padding-top: 56px;
+  margin-top: -56px;
+}
+</style>
+
+<script>
+// manage active state of menu based on current page
+$(document).ready(function () {
+  // active menu anchor
+  href = window.location.pathname
+  href = href.substr(href.lastIndexOf('/') + 1)
+  if (href === "")
+    href = "index.html";
+  var menuAnchor = $('a[href="' + href + '"]');
+
+  // mark it active
+  menuAnchor.parent().addClass('active');
+
+  // if it's got a parent navbar menu mark it active as well
+  menuAnchor.closest('li.dropdown').addClass('active');
+});
+</script>
+
+
+<div class="container-fluid main-container">
+
+<!-- tabsets -->
+<script>
+$(document).ready(function () {
+  window.buildTabsets("TOC");
+});
+</script>
+
+<!-- code folding -->
+
+
+
+
+
+
+<div class="navbar navbar-default  navbar-fixed-top" role="navigation">
+  <div class="container">
+    <div class="navbar-header">
+      <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar">
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+      </button>
+      <a class="navbar-brand" href="index.html">CoExCorr project</a>
+    </div>
+    <div id="navbar" class="navbar-collapse collapse">
+      <ul class="nav navbar-nav">
+        <li>
+  <a href="DuplicateGenes.html">Duplicate genes</a>
+</li>
+<li>
+  <a href="WithinSpecies.html">Within-species ranks</a>
+</li>
+<li>
+  <a href="CompareMethods.html">Alternative methods</a>
+</li>
+<li>
+  <a href="downloads.html">Data sources</a>
+</li>
+      </ul>
+      <ul class="nav navbar-nav navbar-right">
+        
+      </ul>
+    </div><!--/.nav-collapse -->
+  </div><!--/.container -->
+</div><!--/.navbar -->
+
+<div class="fluid-row" id="header">
+
+
+
+<h1 class="title toc-ignore">Data sources</h1>
+
+</div>
+
+
+<p>All the data used in this project was downloaded from public databases. Expression data and sample metadata was downloaded from the <a href="http://plantomics.mind.meiji.ac.jp/podc/">PODC</a> website. Orthology, gene trees and gene metadata from <a href="http://plants.ensembl.org" class="uri">http://plants.ensembl.org</a> (mostly via biomart API). As some of the expression data from PODC used a different genome annotation the corresponding expression data was downloaded using <a href="http://www.ebi.ac.uk/fg/rnaseq/api/">EBI’s RNAseq API</a>.</p>
+<div id="how-to-download-everything" class="section level2">
+<h2>How to download everything</h2>
+<p>Everything should be automatically downloaded by running the source of this document (downloads.Rmd) in R.</p>
+<div id="from-podc" class="section level3">
+<h3>From PODC</h3>
+<p>Expression matrices:</p>
+<ul>
+<li><a href="http://plantomics.mind.meiji.ac.jp/podc/data/arabidopsis_thaliana_fpkm.tsv.gz">arabidopsis_thaliana_fpkm.tsv.gz</a></li>
+<li><a href="http://plantomics.mind.meiji.ac.jp/podc/data/oryza_sativa_fpkm.tsv.gz">oryza_sativa_fpkm.tsv.gz</a></li>
+<li><a href="http://plantomics.mind.meiji.ac.jp/podc/data/solanum_lycopersicum_fpkm.tsv.gz">solanum_lycopersicum_fpkm.tsv.gz</a></li>
+<li><a href="http://plantomics.mind.meiji.ac.jp/podc/data/sorghum_bicolor_fpkm.tsv.gz">sorghum_bicolor_fpkm.tsv.gz</a></li>
+<li><a href="http://plantomics.mind.meiji.ac.jp/podc/data/vitis_vinifera_fpkm.tsv.gz">vitis_vinifera_fpkm.tsv.gz</a></li>
+<li><a href="http://plantomics.mind.meiji.ac.jp/podc/data/medicago_truncatula_fpkm.tsv.gz">medicago_truncatula_fpkm.tsv.gz</a></li>
+<li><a href="http://plantomics.mind.meiji.ac.jp/podc/data/solanum_tuberosum_fpkm.tsv.gz">solanum_tuberosum_fpkm.tsv.gz</a></li>
+<li><a href="http://plantomics.mind.meiji.ac.jp/podc/data/nicotiana_tabacum_fpkm.tsv.gz">nicotiana_tabacum_fpkm.tsv.gz</a></li>
+</ul>
+<p>Sample metadata:</p>
+<ul>
+<li><a href="http://plantomics.mind.meiji.ac.jp/podc/data/arabidopsis_thaliana_sample.xls">arabidopsis_thaliana_sample.xls</a></li>
+<li><a href="http://plantomics.mind.meiji.ac.jp/podc/data/oryza_sativa_sample.xls">oryza_sativa_sample.xls</a></li>
+<li><a href="http://plantomics.mind.meiji.ac.jp/podc/data/solanum_lycopersicum_sample.xls">solanum_lycopersicum_sample.xls</a></li>
+<li><a href="http://plantomics.mind.meiji.ac.jp/podc/data/sorghum_bicolor_sample.xls">sorghum_bicolor_sample.xls</a></li>
+<li><a href="http://plantomics.mind.meiji.ac.jp/podc/data/vitis_vinifera_sample.xls">vitis_vinifera_sample.xls</a></li>
+<li><a href="http://plantomics.mind.meiji.ac.jp/podc/data/medicago_truncatula_sample.xls">medicago_truncatula_sample.xls</a></li>
+<li><a href="http://plantomics.mind.meiji.ac.jp/podc/data/solanum_tuberosum_sample.xls">solanum_tuberosum_sample.xls</a></li>
+<li><a href="http://plantomics.mind.meiji.ac.jp/podc/data/glycine_max_sample.xls">glycine_max_sample.xls</a></li>
+<li><a href="http://plantomics.mind.meiji.ac.jp/podc/data/nicotiana_tabacum_sample.xls">nicotiana_tabacum_sample.xls</a></li>
+<li><a href="http://plantomics.mind.meiji.ac.jp/podc/data/zea_mays_sample.xls">zea_mays_sample.xls</a></li>
+</ul>
+<p>Note: The “readxl” package couldn’t open the .xls files, but managed to open .xlsx files. The .xls files therefore had to be converted .xlsx, which was done “manually”. For convenience xls files were converted to .RDS files</p>
+</div>
+<div id="download-rnaseq-data-from-ebi" class="section level3">
+<h3>Download RNAseq data from EBI</h3>
+<p>Since the Zm and Gm data used in PODC was a different genome annotation than the one at Ensembl, expression data for the same samples is downloaded from EBI using the API described at <a href="http://www.ebi.ac.uk/fg/rnaseq/api/" class="uri">http://www.ebi.ac.uk/fg/rnaseq/api/</a></p>
+<p><strong>glycine_max</strong>: Found expression data for 693 of 693 samples. Downloading studies:</p>
+<ul>
+<li><a href="ftp://ftp.ebi.ac.uk/pub/databases/arrayexpress/data/atlas/rnaseq/studies/ena/SRP002176/glycine_max/genes.fpkm.tsv">SRP002176.genes.fpkm.tsv</a></li>
+<li><a href="ftp://ftp.ebi.ac.uk/pub/databases/arrayexpress/data/atlas/rnaseq/studies/ena/SRP006750/glycine_max/genes.fpkm.tsv">SRP006750.genes.fpkm.tsv</a></li>
+<li><a href="ftp://ftp.ebi.ac.uk/pub/databases/arrayexpress/data/atlas/rnaseq/studies/ena/SRP006766/glycine_max/genes.fpkm.tsv">SRP006766.genes.fpkm.tsv</a></li>
+<li><a href="ftp://ftp.ebi.ac.uk/pub/databases/arrayexpress/data/atlas/rnaseq/studies/ena/SRP006767/glycine_max/genes.fpkm.tsv">SRP006767.genes.fpkm.tsv</a></li>
+<li><a href="ftp://ftp.ebi.ac.uk/pub/databases/arrayexpress/data/atlas/rnaseq/studies/ena/SRP008837/glycine_max/genes.fpkm.tsv">SRP008837.genes.fpkm.tsv</a></li>
+<li><a href="ftp://ftp.ebi.ac.uk/pub/databases/arrayexpress/data/atlas/rnaseq/studies/ena/SRP009068/glycine_max/genes.fpkm.tsv">SRP009068.genes.fpkm.tsv</a></li>
+<li><a href="ftp://ftp.ebi.ac.uk/pub/databases/arrayexpress/data/atlas/rnaseq/studies/ena/SRP009826/glycine_max/genes.fpkm.tsv">SRP009826.genes.fpkm.tsv</a></li>
+<li><a href="ftp://ftp.ebi.ac.uk/pub/databases/arrayexpress/data/atlas/rnaseq/studies/ena/SRP010105/glycine_max/genes.fpkm.tsv">SRP010105.genes.fpkm.tsv</a></li>
+<li><a href="ftp://ftp.ebi.ac.uk/pub/databases/arrayexpress/data/atlas/rnaseq/studies/ena/SRP011586/glycine_max/genes.fpkm.tsv">SRP011586.genes.fpkm.tsv</a></li>
+<li><a href="ftp://ftp.ebi.ac.uk/pub/databases/arrayexpress/data/atlas/rnaseq/studies/ena/SRP012991/glycine_max/genes.fpkm.tsv">SRP012991.genes.fpkm.tsv</a></li>
+<li><a href="ftp://ftp.ebi.ac.uk/pub/databases/arrayexpress/data/atlas/rnaseq/studies/ena/SRP016593/glycine_max/genes.fpkm.tsv">SRP016593.genes.fpkm.tsv</a></li>
+<li><a href="ftp://ftp.ebi.ac.uk/pub/databases/arrayexpress/data/atlas/rnaseq/studies/ena/SRP017324/glycine_max/genes.fpkm.tsv">SRP017324.genes.fpkm.tsv</a></li>
+<li><a href="ftp://ftp.ebi.ac.uk/pub/databases/arrayexpress/data/atlas/rnaseq/studies/ena/SRP017638/glycine_max/genes.fpkm.tsv">SRP017638.genes.fpkm.tsv</a></li>
+<li><a href="ftp://ftp.ebi.ac.uk/pub/databases/arrayexpress/data/atlas/rnaseq/studies/ena/SRP017937/glycine_max/genes.fpkm.tsv">SRP017937.genes.fpkm.tsv</a></li>
+<li><a href="ftp://ftp.ebi.ac.uk/pub/databases/arrayexpress/data/atlas/rnaseq/studies/ena/SRP020868/glycine_max/genes.fpkm.tsv">SRP020868.genes.fpkm.tsv</a></li>
+<li><a href="ftp://ftp.ebi.ac.uk/pub/databases/arrayexpress/data/atlas/rnaseq/studies/ena/SRP021098/glycine_max/genes.fpkm.tsv">SRP021098.genes.fpkm.tsv</a></li>
+<li><a href="ftp://ftp.ebi.ac.uk/pub/databases/arrayexpress/data/atlas/rnaseq/studies/ena/SRP021139/glycine_max/genes.fpkm.tsv">SRP021139.genes.fpkm.tsv</a></li>
+<li><a href="ftp://ftp.ebi.ac.uk/pub/databases/arrayexpress/data/atlas/rnaseq/studies/ena/SRP022148/glycine_max/genes.fpkm.tsv">SRP022148.genes.fpkm.tsv</a></li>
+<li><a href="ftp://ftp.ebi.ac.uk/pub/databases/arrayexpress/data/atlas/rnaseq/studies/ena/SRP024277/glycine_max/genes.fpkm.tsv">SRP024277.genes.fpkm.tsv</a></li>
+<li><a href="ftp://ftp.ebi.ac.uk/pub/databases/arrayexpress/data/atlas/rnaseq/studies/ena/SRP025919/glycine_max/genes.fpkm.tsv">SRP025919.genes.fpkm.tsv</a></li>
+<li><a href="ftp://ftp.ebi.ac.uk/pub/databases/arrayexpress/data/atlas/rnaseq/studies/ena/SRP026401/glycine_max/genes.fpkm.tsv">SRP026401.genes.fpkm.tsv</a></li>
+<li><a href="ftp://ftp.ebi.ac.uk/pub/databases/arrayexpress/data/atlas/rnaseq/studies/ena/SRP026540/glycine_max/genes.fpkm.tsv">SRP026540.genes.fpkm.tsv</a></li>
+<li><a href="ftp://ftp.ebi.ac.uk/pub/databases/arrayexpress/data/atlas/rnaseq/studies/ena/SRP028137/glycine_max/genes.fpkm.tsv">SRP028137.genes.fpkm.tsv</a></li>
+<li><a href="ftp://ftp.ebi.ac.uk/pub/databases/arrayexpress/data/atlas/rnaseq/studies/ena/SRP029893/glycine_max/genes.fpkm.tsv">SRP029893.genes.fpkm.tsv</a></li>
+<li><a href="ftp://ftp.ebi.ac.uk/pub/databases/arrayexpress/data/atlas/rnaseq/studies/ena/SRP029894/glycine_max/genes.fpkm.tsv">SRP029894.genes.fpkm.tsv</a></li>
+<li><a href="ftp://ftp.ebi.ac.uk/pub/databases/arrayexpress/data/atlas/rnaseq/studies/ena/SRP029895/glycine_max/genes.fpkm.tsv">SRP029895.genes.fpkm.tsv</a></li>
+<li><a href="ftp://ftp.ebi.ac.uk/pub/databases/arrayexpress/data/atlas/rnaseq/studies/ena/SRP029897/glycine_max/genes.fpkm.tsv">SRP029897.genes.fpkm.tsv</a></li>
+<li><a href="ftp://ftp.ebi.ac.uk/pub/databases/arrayexpress/data/atlas/rnaseq/studies/ena/SRP031889/glycine_max/genes.fpkm.tsv">SRP031889.genes.fpkm.tsv</a></li>
+<li><a href="ftp://ftp.ebi.ac.uk/pub/databases/arrayexpress/data/atlas/rnaseq/studies/ena/SRP037713/glycine_max/genes.fpkm.tsv">SRP037713.genes.fpkm.tsv</a></li>
+<li><a href="ftp://ftp.ebi.ac.uk/pub/databases/arrayexpress/data/atlas/rnaseq/studies/ena/SRP038111/glycine_max/genes.fpkm.tsv">SRP038111.genes.fpkm.tsv</a></li>
+<li><a href="ftp://ftp.ebi.ac.uk/pub/databases/arrayexpress/data/atlas/rnaseq/studies/ena/SRP041622/glycine_max/genes.fpkm.tsv">SRP041622.genes.fpkm.tsv</a></li>
+<li><a href="ftp://ftp.ebi.ac.uk/pub/databases/arrayexpress/data/atlas/rnaseq/studies/ena/SRP041709/glycine_max/genes.fpkm.tsv">SRP041709.genes.fpkm.tsv</a></li>
+<li><a href="ftp://ftp.ebi.ac.uk/pub/databases/arrayexpress/data/atlas/rnaseq/studies/ena/SRP041710/glycine_max/genes.fpkm.tsv">SRP041710.genes.fpkm.tsv</a></li>
+<li><a href="ftp://ftp.ebi.ac.uk/pub/databases/arrayexpress/data/atlas/rnaseq/studies/ena/SRP041932/glycine_max/genes.fpkm.tsv">SRP041932.genes.fpkm.tsv</a></li>
+<li><a href="ftp://ftp.ebi.ac.uk/pub/databases/arrayexpress/data/atlas/rnaseq/studies/ena/SRP042248/glycine_max/genes.fpkm.tsv">SRP042248.genes.fpkm.tsv</a></li>
+<li><a href="ftp://ftp.ebi.ac.uk/pub/databases/arrayexpress/data/atlas/rnaseq/studies/ena/SRP043070/glycine_max/genes.fpkm.tsv">SRP043070.genes.fpkm.tsv</a></li>
+<li><a href="ftp://ftp.ebi.ac.uk/pub/databases/arrayexpress/data/atlas/rnaseq/studies/ena/SRP044048/glycine_max/genes.fpkm.tsv">SRP044048.genes.fpkm.tsv</a></li>
+<li><a href="ftp://ftp.ebi.ac.uk/pub/databases/arrayexpress/data/atlas/rnaseq/studies/ena/SRP045061/glycine_max/genes.fpkm.tsv">SRP045061.genes.fpkm.tsv</a></li>
+<li><a href="ftp://ftp.ebi.ac.uk/pub/databases/arrayexpress/data/atlas/rnaseq/studies/ena/SRP045669/glycine_max/genes.fpkm.tsv">SRP045669.genes.fpkm.tsv</a></li>
+<li><a href="ftp://ftp.ebi.ac.uk/pub/databases/arrayexpress/data/atlas/rnaseq/studies/ena/SRP045932/glycine_max/genes.fpkm.tsv">SRP045932.genes.fpkm.tsv</a></li>
+<li><a href="ftp://ftp.ebi.ac.uk/pub/databases/arrayexpress/data/atlas/rnaseq/studies/ena/SRP048201/glycine_max/genes.fpkm.tsv">SRP048201.genes.fpkm.tsv</a></li>
+<li><a href="ftp://ftp.ebi.ac.uk/pub/databases/arrayexpress/data/atlas/rnaseq/studies/ena/SRP048209/glycine_max/genes.fpkm.tsv">SRP048209.genes.fpkm.tsv</a></li>
+</ul>
+<p><strong>zea_mays</strong>: Found expression data for 2547 of 2570 samples. Downloading studies:</p>
+<ul>
+<li><a href="ftp://ftp.ebi.ac.uk/pub/databases/arrayexpress/data/atlas/rnaseq/studies/ena/ERP001184/zea_mays/genes.fpkm.tsv">ERP001184.genes.fpkm.tsv</a></li>
+<li><a href="ftp://ftp.ebi.ac.uk/pub/databases/arrayexpress/data/atlas/rnaseq/studies/ena/ERP004161/zea_mays/genes.fpkm.tsv">ERP004161.genes.fpkm.tsv</a></li>
+<li><a href="ftp://ftp.ebi.ac.uk/pub/databases/arrayexpress/data/atlas/rnaseq/studies/ena/SRP001315/zea_mays/genes.fpkm.tsv">SRP001315.genes.fpkm.tsv</a></li>
+<li><a href="ftp://ftp.ebi.ac.uk/pub/databases/arrayexpress/data/atlas/rnaseq/studies/ena/SRP001477/zea_mays/genes.fpkm.tsv">SRP001477.genes.fpkm.tsv</a></li>
+<li><a href="ftp://ftp.ebi.ac.uk/pub/databases/arrayexpress/data/atlas/rnaseq/studies/ena/SRP006463/zea_mays/genes.fpkm.tsv">SRP006463.genes.fpkm.tsv</a></li>
+<li><a href="ftp://ftp.ebi.ac.uk/pub/databases/arrayexpress/data/atlas/rnaseq/studies/ena/SRP006703/zea_mays/genes.fpkm.tsv">SRP006703.genes.fpkm.tsv</a></li>
+<li><a href="ftp://ftp.ebi.ac.uk/pub/databases/arrayexpress/data/atlas/rnaseq/studies/ena/SRP006965/zea_mays/genes.fpkm.tsv">SRP006965.genes.fpkm.tsv</a></li>
+<li><a href="ftp://ftp.ebi.ac.uk/pub/databases/arrayexpress/data/atlas/rnaseq/studies/ena/SRP009063/zea_mays/genes.fpkm.tsv">SRP009063.genes.fpkm.tsv</a></li>
+<li><a href="ftp://ftp.ebi.ac.uk/pub/databases/arrayexpress/data/atlas/rnaseq/studies/ena/SRP009313/zea_mays/genes.fpkm.tsv">SRP009313.genes.fpkm.tsv</a></li>
+<li><a href="ftp://ftp.ebi.ac.uk/pub/databases/arrayexpress/data/atlas/rnaseq/studies/ena/SRP010124/zea_mays/genes.fpkm.tsv">SRP010124.genes.fpkm.tsv</a></li>
+<li><a href="ftp://ftp.ebi.ac.uk/pub/databases/arrayexpress/data/atlas/rnaseq/studies/ena/SRP010139/zea_mays/genes.fpkm.tsv">SRP010139.genes.fpkm.tsv</a></li>
+<li><a href="ftp://ftp.ebi.ac.uk/pub/databases/arrayexpress/data/atlas/rnaseq/studies/ena/SRP010680/zea_mays/genes.fpkm.tsv">SRP010680.genes.fpkm.tsv</a></li>
+<li><a href="ftp://ftp.ebi.ac.uk/pub/databases/arrayexpress/data/atlas/rnaseq/studies/ena/SRP010947/zea_mays/genes.fpkm.tsv">SRP010947.genes.fpkm.tsv</a></li>
+<li><a href="ftp://ftp.ebi.ac.uk/pub/databases/arrayexpress/data/atlas/rnaseq/studies/ena/SRP011187/zea_mays/genes.fpkm.tsv">SRP011187.genes.fpkm.tsv</a></li>
+<li><a href="ftp://ftp.ebi.ac.uk/pub/databases/arrayexpress/data/atlas/rnaseq/studies/ena/SRP011480/zea_mays/genes.fpkm.tsv">SRP011480.genes.fpkm.tsv</a></li>
+<li><a href="ftp://ftp.ebi.ac.uk/pub/databases/arrayexpress/data/atlas/rnaseq/studies/ena/SRP011560/zea_mays/genes.fpkm.tsv">SRP011560.genes.fpkm.tsv</a></li>
+<li><a href="ftp://ftp.ebi.ac.uk/pub/databases/arrayexpress/data/atlas/rnaseq/studies/ena/SRP011565/zea_mays/genes.fpkm.tsv">SRP011565.genes.fpkm.tsv</a></li>
+<li><a href="ftp://ftp.ebi.ac.uk/pub/databases/arrayexpress/data/atlas/rnaseq/studies/ena/SRP011566/zea_mays/genes.fpkm.tsv">SRP011566.genes.fpkm.tsv</a></li>
+<li><a href="ftp://ftp.ebi.ac.uk/pub/databases/arrayexpress/data/atlas/rnaseq/studies/ena/SRP011579/zea_mays/genes.fpkm.tsv">SRP011579.genes.fpkm.tsv</a></li>
+<li><a href="ftp://ftp.ebi.ac.uk/pub/databases/arrayexpress/data/atlas/rnaseq/studies/ena/SRP011929/zea_mays/genes.fpkm.tsv">SRP011929.genes.fpkm.tsv</a></li>
+<li><a href="ftp://ftp.ebi.ac.uk/pub/databases/arrayexpress/data/atlas/rnaseq/studies/ena/SRP011930/zea_mays/genes.fpkm.tsv">SRP011930.genes.fpkm.tsv</a></li>
+<li><a href="ftp://ftp.ebi.ac.uk/pub/databases/arrayexpress/data/atlas/rnaseq/studies/ena/SRP011991/zea_mays/genes.fpkm.tsv">SRP011991.genes.fpkm.tsv</a></li>
+<li><a href="ftp://ftp.ebi.ac.uk/pub/databases/arrayexpress/data/atlas/rnaseq/studies/ena/SRP013432/zea_mays/genes.fpkm.tsv">SRP013432.genes.fpkm.tsv</a></li>
+<li><a href="ftp://ftp.ebi.ac.uk/pub/databases/arrayexpress/data/atlas/rnaseq/studies/ena/SRP013490/zea_mays/genes.fpkm.tsv">SRP013490.genes.fpkm.tsv</a></li>
+<li><a href="ftp://ftp.ebi.ac.uk/pub/databases/arrayexpress/data/atlas/rnaseq/studies/ena/SRP013564/zea_mays/genes.fpkm.tsv">SRP013564.genes.fpkm.tsv</a></li>
+<li><a href="ftp://ftp.ebi.ac.uk/pub/databases/arrayexpress/data/atlas/rnaseq/studies/ena/SRP013744/zea_mays/genes.fpkm.tsv">SRP013744.genes.fpkm.tsv</a></li>
+<li><a href="ftp://ftp.ebi.ac.uk/pub/databases/arrayexpress/data/atlas/rnaseq/studies/ena/SRP014652/zea_mays/genes.fpkm.tsv">SRP014652.genes.fpkm.tsv</a></li>
+<li><a href="ftp://ftp.ebi.ac.uk/pub/databases/arrayexpress/data/atlas/rnaseq/studies/ena/SRP014652/zea_mays/genes.fpkm.tsv">SRP014652.genes.fpkm.tsv</a></li>
+<li><a href="ftp://ftp.ebi.ac.uk/pub/databases/arrayexpress/data/atlas/rnaseq/studies/ena/SRP014792/zea_mays/genes.fpkm.tsv">SRP014792.genes.fpkm.tsv</a></li>
+<li><a href="ftp://ftp.ebi.ac.uk/pub/databases/arrayexpress/data/atlas/rnaseq/studies/ena/SRP015339/zea_mays/genes.fpkm.tsv">SRP015339.genes.fpkm.tsv</a></li>
+<li><a href="ftp://ftp.ebi.ac.uk/pub/databases/arrayexpress/data/atlas/rnaseq/studies/ena/SRP017111/zea_mays/genes.fpkm.tsv">SRP017111.genes.fpkm.tsv</a></li>
+<li><a href="ftp://ftp.ebi.ac.uk/pub/databases/arrayexpress/data/atlas/rnaseq/studies/ena/SRP017122/zea_mays/genes.fpkm.tsv">SRP017122.genes.fpkm.tsv</a></li>
+<li><a href="ftp://ftp.ebi.ac.uk/pub/databases/arrayexpress/data/atlas/rnaseq/studies/ena/SRP017907/zea_mays/genes.fpkm.tsv">SRP017907.genes.fpkm.tsv</a></li>
+<li><a href="ftp://ftp.ebi.ac.uk/pub/databases/arrayexpress/data/atlas/rnaseq/studies/ena/SRP018088/zea_mays/genes.fpkm.tsv">SRP018088.genes.fpkm.tsv</a></li>
+<li><a href="ftp://ftp.ebi.ac.uk/pub/databases/arrayexpress/data/atlas/rnaseq/studies/ena/SRP018110/zea_mays/genes.fpkm.tsv">SRP018110.genes.fpkm.tsv</a></li>
+<li><a href="ftp://ftp.ebi.ac.uk/pub/databases/arrayexpress/data/atlas/rnaseq/studies/ena/SRP018331/zea_mays/genes.fpkm.tsv">SRP018331.genes.fpkm.tsv</a></li>
+<li><a href="ftp://ftp.ebi.ac.uk/pub/databases/arrayexpress/data/atlas/rnaseq/studies/ena/SRP018753/zea_mays/genes.fpkm.tsv">SRP018753.genes.fpkm.tsv</a></li>
+<li><a href="ftp://ftp.ebi.ac.uk/pub/databases/arrayexpress/data/atlas/rnaseq/studies/ena/SRP018823/zea_mays/genes.fpkm.tsv">SRP018823.genes.fpkm.tsv</a></li>
+<li><a href="ftp://ftp.ebi.ac.uk/pub/databases/arrayexpress/data/atlas/rnaseq/studies/ena/SRP018823/zea_mays/genes.fpkm.tsv">SRP018823.genes.fpkm.tsv</a></li>
+<li><a href="ftp://ftp.ebi.ac.uk/pub/databases/arrayexpress/data/atlas/rnaseq/studies/ena/SRP020528/zea_mays/genes.fpkm.tsv">SRP020528.genes.fpkm.tsv</a></li>
+<li><a href="ftp://ftp.ebi.ac.uk/pub/databases/arrayexpress/data/atlas/rnaseq/studies/ena/SRP022165/zea_mays/genes.fpkm.tsv">SRP022165.genes.fpkm.tsv</a></li>
+<li><a href="ftp://ftp.ebi.ac.uk/pub/databases/arrayexpress/data/atlas/rnaseq/studies/ena/SRP026161/zea_mays/genes.fpkm.tsv">SRP026161.genes.fpkm.tsv</a></li>
+<li><a href="ftp://ftp.ebi.ac.uk/pub/databases/arrayexpress/data/atlas/rnaseq/studies/ena/SRP026258/zea_mays/genes.fpkm.tsv">SRP026258.genes.fpkm.tsv</a></li>
+<li><a href="ftp://ftp.ebi.ac.uk/pub/databases/arrayexpress/data/atlas/rnaseq/studies/ena/SRP026399/zea_mays/genes.fpkm.tsv">SRP026399.genes.fpkm.tsv</a></li>
+<li><a href="ftp://ftp.ebi.ac.uk/pub/databases/arrayexpress/data/atlas/rnaseq/studies/ena/SRP026531/zea_mays/genes.fpkm.tsv">SRP026531.genes.fpkm.tsv</a></li>
+<li><a href="ftp://ftp.ebi.ac.uk/pub/databases/arrayexpress/data/atlas/rnaseq/studies/ena/SRP028231/zea_mays/genes.fpkm.tsv">SRP028231.genes.fpkm.tsv</a></li>
+<li><a href="ftp://ftp.ebi.ac.uk/pub/databases/arrayexpress/data/atlas/rnaseq/studies/ena/SRP030121/zea_mays/genes.fpkm.tsv">SRP030121.genes.fpkm.tsv</a></li>
+<li><a href="ftp://ftp.ebi.ac.uk/pub/databases/arrayexpress/data/atlas/rnaseq/studies/ena/SRP031872/zea_mays/genes.fpkm.tsv">SRP031872.genes.fpkm.tsv</a></li>
+<li><a href="ftp://ftp.ebi.ac.uk/pub/databases/arrayexpress/data/atlas/rnaseq/studies/ena/SRP032469/zea_mays/genes.fpkm.tsv">SRP032469.genes.fpkm.tsv</a></li>
+<li><a href="ftp://ftp.ebi.ac.uk/pub/databases/arrayexpress/data/atlas/rnaseq/studies/ena/SRP032921/zea_mays/genes.fpkm.tsv">SRP032921.genes.fpkm.tsv</a></li>
+<li><a href="ftp://ftp.ebi.ac.uk/pub/databases/arrayexpress/data/atlas/rnaseq/studies/ena/SRP033653/zea_mays/genes.fpkm.tsv">SRP033653.genes.fpkm.tsv</a></li>
+<li><a href="ftp://ftp.ebi.ac.uk/pub/databases/arrayexpress/data/atlas/rnaseq/studies/ena/SRP035353/zea_mays/genes.fpkm.tsv">SRP035353.genes.fpkm.tsv</a></li>
+<li><a href="ftp://ftp.ebi.ac.uk/pub/databases/arrayexpress/data/atlas/rnaseq/studies/ena/SRP035498/zea_mays/genes.fpkm.tsv">SRP035498.genes.fpkm.tsv</a></li>
+<li><a href="ftp://ftp.ebi.ac.uk/pub/databases/arrayexpress/data/atlas/rnaseq/studies/ena/SRP035577/zea_mays/genes.fpkm.tsv">SRP035577.genes.fpkm.tsv</a></li>
+<li><a href="ftp://ftp.ebi.ac.uk/pub/databases/arrayexpress/data/atlas/rnaseq/studies/ena/SRP035579/zea_mays/genes.fpkm.tsv">SRP035579.genes.fpkm.tsv</a></li>
+<li><a href="ftp://ftp.ebi.ac.uk/pub/databases/arrayexpress/data/atlas/rnaseq/studies/ena/SRP035579/zea_mays/genes.fpkm.tsv">SRP035579.genes.fpkm.tsv</a></li>
+<li><a href="ftp://ftp.ebi.ac.uk/pub/databases/arrayexpress/data/atlas/rnaseq/studies/ena/SRP037559/zea_mays/genes.fpkm.tsv">SRP037559.genes.fpkm.tsv</a></li>
+<li><a href="ftp://ftp.ebi.ac.uk/pub/databases/arrayexpress/data/atlas/rnaseq/studies/ena/SRP039594/zea_mays/genes.fpkm.tsv">SRP039594.genes.fpkm.tsv</a></li>
+<li><a href="ftp://ftp.ebi.ac.uk/pub/databases/arrayexpress/data/atlas/rnaseq/studies/ena/SRP040690/zea_mays/genes.fpkm.tsv">SRP040690.genes.fpkm.tsv</a></li>
+<li><a href="ftp://ftp.ebi.ac.uk/pub/databases/arrayexpress/data/atlas/rnaseq/studies/ena/SRP040721/zea_mays/genes.fpkm.tsv">SRP040721.genes.fpkm.tsv</a></li>
+<li><a href="ftp://ftp.ebi.ac.uk/pub/databases/arrayexpress/data/atlas/rnaseq/studies/ena/SRP041704/zea_mays/genes.fpkm.tsv">SRP041704.genes.fpkm.tsv</a></li>
+<li><a href="ftp://ftp.ebi.ac.uk/pub/databases/arrayexpress/data/atlas/rnaseq/studies/ena/SRP043224/zea_mays/genes.fpkm.tsv">SRP043224.genes.fpkm.tsv</a></li>
+<li><a href="ftp://ftp.ebi.ac.uk/pub/databases/arrayexpress/data/atlas/rnaseq/studies/ena/SRP047035/zea_mays/genes.fpkm.tsv">SRP047035.genes.fpkm.tsv</a></li>
+<li><a href="ftp://ftp.ebi.ac.uk/pub/databases/arrayexpress/data/atlas/rnaseq/studies/ena/SRP047420/zea_mays/genes.fpkm.tsv">SRP047420.genes.fpkm.tsv</a></li>
+<li><a href="ftp://ftp.ebi.ac.uk/pub/databases/arrayexpress/data/atlas/rnaseq/studies/ena/SRP049386/zea_mays/genes.fpkm.tsv">SRP049386.genes.fpkm.tsv</a></li>
+<li><a href="ftp://ftp.ebi.ac.uk/pub/databases/arrayexpress/data/atlas/rnaseq/studies/ena/SRP049386/zea_mays/genes.fpkm.tsv">SRP049386.genes.fpkm.tsv</a></li>
+</ul>
+</div>
+<div id="fix-the-metadata" class="section level3">
+<h3>Fix the metadata</h3>
+<p>Because not all of the samples described in the metadata could be downloaded from EBI, the corresponding entries should be removed from the metadata to keep it consistant. Furthermore, the order of the samples in the metadata should be ordered to match the order in the PODC expression data.</p>
+<ul>
+<li>Gm : removed 12 sample metadata entries.</li>
+<li>Zm : removed 25 sample metadata entries.</li>
+</ul>
+</div>
+<div id="ensembl-biomart" class="section level3">
+<h3>Ensembl BioMart</h3>
+<p>Gene orthology between each pair of species are downloaded from Ensembl biomart:</p>
+<ul>
+<li>At_Os_orthologs.txt</li>
+<li>Gm_Os_orthologs.txt</li>
+<li>At_Gm_orthologs.txt</li>
+<li>Os_Sl_orthologs.txt</li>
+<li>At_Sl_orthologs.txt</li>
+<li>Gm_Sl_orthologs.txt</li>
+<li>Os_Zm_orthologs.txt</li>
+<li>At_Zm_orthologs.txt</li>
+<li>Gm_Zm_orthologs.txt</li>
+<li><p>Sl_Zm_orthologs.txt</p></li>
+<li>Os_geneInfo.txt</li>
+<li>At_geneInfo.txt</li>
+<li>Gm_geneInfo.txt</li>
+<li>Sl_geneInfo.txt</li>
+<li><p>Zm_geneInfo.txt</p></li>
+</ul>
+</div>
+<div id="ensembl-compara-gene-trees" class="section level3">
+<h3>Ensembl compara gene trees</h3>
+<p>Gene tree dump from Ensembl Plants version 33.</p>
+<ul>
+<li><a href="ftp://ftp.ensemblgenomes.org/pub/plants/release-33/emf/ensembl-compara/homologies/Compara.phyloxml_aa_trees.33.tar.gz">Compara.phyloxml_aa_trees.33.tar.gz</a> [1] “indata/Compara.phyloxml_aa_trees.33.tar.gz”</li>
+</ul>
+</div>
+</div>
+
+
+
+
+</div>
+
+<script>
+
+// add bootstrap table styles to pandoc tables
+function bootstrapStylePandocTables() {
+  $('tr.header').parent('thead').parent('table').addClass('table table-condensed');
+}
+$(document).ready(function () {
+  bootstrapStylePandocTables();
+});
+
+
+</script>
+
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    script.src  = "https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML";
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script>
+
+</body>
+</html>
