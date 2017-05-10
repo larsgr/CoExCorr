@@ -178,15 +178,22 @@ x %>%
 
 ```
 
-The set of genes that have a 1:1 ortholog relationship between At and Os are more likely to be essential and therefore have a conserved expression pattern. Given the recent WGD in Gm there are many of these genes that have duplicate orthologs in Gm (i.e. At1:Gm2). The plots below compare the ranks distribution of two groups of At1:Gm2 orthologs, those that are At1:Os1 (singleton) and those that are not. The singletons are expected to be under selective pressure to retain the expression pattern. It does not seem to be any significant difference between the groups regarding the correlation between the duplicate ranks, indicating that different selection pressure does not affect difference in the expression between the two duplicates since the duplication in Gm. However, there is a significant difference in the mean ranks of the two duplicates in the two groups, i.e. the singleton group tend to have higher ranks. This might indicate that most of the expression divergence occured in the At lineage or before the WGD in the Gm lineage. If we compare the ranks of the At1:Os1 orthologs with the corresponding mean ranks of the At1:Gm2 orthologs we see that they correlate well but that At1:Gm2 rarely have higher rank than At1:Os1. As At:Os is more distantly related than At:Gm this is not expected. A boring explanation could be that the reduced ranks in At:Gm is mainly a result of sample bias in Gm.
+## At1:Gm2 
+
+The set of genes that have a 1:1 ortholog relationship between At and Os are more likely to be essential and therefore have a conserved expression pattern. Given the recent WGD in Gm there are many of these genes that have duplicate orthologs in Gm (i.e. At1:Gm2). The plots below compare the ranks distribution of two groups of At1:Gm2 orthologs, those that are At1:Os1 (singleton) and those that are not. The singletons are expected to be under selective pressure to retain the expression pattern.
+
+There seems to be a lower correlation between Gm duplicates among the singletons, perhaps an indication of a selective pressure to conserve only one of the duplicates (i.e. one duplicate is on the way to non-functionalizaition).
+
+However, there is a also significant difference in the mean ranks (see wilcoxon rank-sum test below) of the two duplicates in the two groups, i.e. the singleton group tend to have higher ranks in general. This might indicate that most of the expression divergence occured in the At lineage or before the WGD in the Gm lineage.
+
 
 ```{r testGmDuplicateWithOsSingleton}
 At1Os1 <-
   filter(x, spcPair=="AtOs", N1==1, N2==1, rnkT=="rnksT")
 
 At1Gm2 <-
-  filter(x, spcPair=="AtGm", N1==1, N2==2, rnkT=="rnksT") %>% 
-  group_by(SPC1) %>%
+  filter(x, spcPair=="AtGm", N1==1, N2==2) %>% 
+  group_by(SPC1, rnkT) %>%
   summarise( meanRnk=mean(logRnk), 
              rnk1=first(logRnk),
              rnk2=last(logRnk) ) %>% 
@@ -195,14 +202,18 @@ At1Gm2 <-
 
 
 At1Gm2 %>% 
+  mutate( ORSdir = as.factor(c(rnks="At -> Gm", rnksT="Gm -> At")[rnkT]) ) %>% 
   ggplot(aes(x=rnk1,y=rnk2)) +
+  ggtitle("At1:Gm2 orthologs sorted by singleton state in Os") +
+  ylab("-log10(P) of duplicate 2") +
+  xlab("-log10(P) of duplicate 1") +
   geom_point() +
   geom_density2d() +
   coord_equal() +
   stat_poly_eq( formula = x~y,
                 aes(label = ..rr.label..), fontface="bold",color="red",
                 parse = TRUE) +
-  facet_wrap( ~ isAt1Os1 )
+  facet_grid( ORSdir ~ isAt1Os1 )
 
 
 
@@ -221,6 +232,8 @@ At1Gm2 %>%
 ```
 
 
+If we compare the ranks of the At1:Os1 orthologs with the corresponding mean ranks of the At1:Gm2 orthologs we see that they correlate well but that At1:Gm2 rarely have higher rank than At1:Os1. As At:Os is more distantly related than At:Gm this is not expected. A boring explanation could be that the reduced ranks in At:Gm is mainly a result of sample bias in Gm.
+
 ```{r}
 At1Os1 %>% 
   transmute(SPC1=SPC1, logRnkAtOs=logRnk) %>% 
@@ -230,6 +243,9 @@ At1Os1 %>%
   ylab("mean rank At1Gm2") +
   geom_point() +
   coord_equal() +
+  stat_poly_eq( formula = x~y,
+                aes(label = ..rr.label..), fontface="bold",color="red",
+                parse = TRUE) +  
   geom_density2d()
 ```
 
