@@ -8,7 +8,7 @@
 #' @param paramMat data.frame with arguments to the function. Each
 #' @param jobName name of job
 #' @param prev_jobs name of previous job or "none"
-#' @param dep_type "none", "serial", "burst" or "gather"
+#' @param dep_type "none", "serial", "burst", "gather" or "auto"(default)
 #' @param sub_type "serial": function call will be run after each other in one job, 
 #'                 or "scatter": each function call will be run in parallel
 #' @param cpu_reserved number of CPU's per job
@@ -22,7 +22,8 @@
 #' @export
 #'
 Rjob <- function( source, fun, paramMat=data.frame(), jobName=fun,
-                  prev_jobs="none", dep_type="none", sub_type="serial",
+                  prev_jobs="none", dep_type="auto", 
+                  sub_type=ifelse(nrow(paramMat)>1,"scatter","serial"),
                   cpu_reserved = 1, 
                   memory_reserved = "4G",
                   walltime = "10-00:00:00",
@@ -277,9 +278,56 @@ subFlow <- function(flowList, prefix){
   return(flowList)
 }
 
+
+autoDependencies <- function(flowdef){
+  for( i in 1:nrow(flowdef)){
+    
+    # skip if not "auto"
+    if(flowdef$dep_type[i] != "auto"){
+      next 
+    }
+    
+    # split prev_jobs by comma
+    prevJobs <- unlist(strsplit(flowdef$prev_jobs[i],split = ","))
+    
+    # if no previous jobs
+    if(prevJobs == "none" || length(prevJobs)==0){
+      flowdef$dep_type[i] <- "none"
+      next
+    } 
+    
+    # get sub_type of previous jobs
+    prevType <- flowdef$sub_type[match(prevJobs,flowdef$jobname)]
+    
+    # If several previous jobs or previous was "scatter" then "gather"
+    if( length(prevJobs) > 1 || prevType == "scatter") {
+      flowdef$dep_type[i] <- "gather"
+      next
+    }
+    
+    # assert that previous sub_type is serial
+    stopifnot(prevType == "serial")
+    
+    # If sub_type is "scatter" jobs then "burst"
+    if( flowdef$sub_type[i] == "scatter" ) {
+      flowdef$dep_type[i] <- "burst"
+    } else {
+      # assert that sub_type is serial
+      stopifnot(flowdef$sub_type[i] == "serial")
+      
+      flowdef$dep_type[i] <- "serial"
+    }
+  }
+  
+  return(flowdef)
+}
+
 Rflow <- function(flowname, ...){
   flowList <- flowbind(...)
   
+  # fix auto dependencies
+  flowList$flowdef <- autoDependencies(flowList$flowdef)
+
   to_flow(x = flowList$flowmat, 
           def = as.flowdef(flowList$flowdef),
           flowname = flowname)
