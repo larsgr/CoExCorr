@@ -20,7 +20,7 @@ unnest1 <- function(x, .id){
   # unnest names
   x <- unnest(x)
   # add unnested(flattened) list
-  x[[names(listColIdx)]] <- flatten(l)
+  x[[names(listColIdx)]] <- purrr::flatten(l)
   
   return(x)
 }
