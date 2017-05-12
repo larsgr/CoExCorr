@@ -12,7 +12,7 @@ library(tidyverse)
 library(ggplot2)
 ```
 
-# Aim of the analysis
+## Aim of the analysis
 
 Compare sub-sets of samples from the same species to quantify the effect of the sample selection alone.
 

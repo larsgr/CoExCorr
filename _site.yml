@@ -1,6 +1,9 @@
 name: "CoExCorr project"
 output_dir: "docs"
 exclude: ["*"]
+output: 
+  html_document: 
+    theme: cosmo
 navbar:
   title: "CoExCorr project"
   left:
@@ -8,6 +11,8 @@ navbar:
       href: DuplicateGenes.html
     - text: "Within-species ranks"
       href: WithinSpecies.html
+    - text: "Number of samples"
+      href: nSamples.html
     - text: "Alternative methods"
       href: CompareMethods.html
     - text: "Data sources"

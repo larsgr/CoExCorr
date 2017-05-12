@@ -17,6 +17,8 @@ The final output of the algorithm is a measure of expression similarity between 
 * CLR: "Normalize" the co-expression using the CLR algorithm.
 * Coexpression Correlation Score (CCS): Compare co-expression matrices by calculating the pearson correlation coefficient (PCC) between co-expression matrices using a set of 1:1 orthologs as reference.
 
+In [Alternative methods](CompareMethods.html) other methods are tested.
+
 ### Data sources
 
 To test the algorithm we used public gene expression data from five different plants:

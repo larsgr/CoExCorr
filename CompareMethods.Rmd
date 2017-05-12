@@ -32,7 +32,7 @@ This was combined with several different methods of "normalising" the correlatio
 * none: just use correlation matrix directly
 * TOM: Topological overlap as used in WGCNA. First take absolute value of correlation matrix, then scale-free exponent (fixed to 6) followed by TOM.
 
-The methods were applied to At and Os using all samples but only the 1:1 genes (~9k genes). Ortholog ranks for all genes (i.e 1:1 orthologs) were calculated. 
+The methods were applied to At and Os using all samples but only the 1:1 genes (~5k genes). Ortholog ranks for all genes (i.e 1:1 orthologs) were calculated. 
 
 ### results
 
