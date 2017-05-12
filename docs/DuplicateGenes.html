@@ -15,7 +15,7 @@
 
 <script src="site_libs/jquery-1.11.3/jquery.min.js"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<link href="site_libs/bootstrap-3.3.5/css/bootstrap.min.css" rel="stylesheet" />
+<link href="site_libs/bootstrap-3.3.5/css/cosmo.min.css" rel="stylesheet" />
 <script src="site_libs/bootstrap-3.3.5/js/bootstrap.min.js"></script>
 <script src="site_libs/bootstrap-3.3.5/shim/html5shiv.min.js"></script>
 <script src="site_libs/bootstrap-3.3.5/shim/respond.min.js"></script>
@@ -182,6 +182,9 @@ $(document).ready(function () {
   <a href="WithinSpecies.html">Within-species ranks</a>
 </li>
 <li>
+  <a href="nSamples.html">Number of samples</a>
+</li>
+<li>
   <a href="CompareMethods.html">Alternative methods</a>
 </li>
 <li>
@@ -220,9 +223,15 @@ $(document).ready(function () {
 <h2>1:2 orthologs</h2>
 <p>If we look at 1:2 orthologs we can plot the score between the single ortholog and the two duplicate orthologs. The following plots show the -log10(P) transformed rank for each of the two alternative orthologs plotted against each other. If both of the duplicate genes have retained the same function we expect them to be similar, while if one of the duplicates have taken a different function (i.e. neo- or sub-functionalized) they may have diverged expressed patterns. Since the score for each of the duplicates also depends on whether the single ortholog has diverged it is however expected the scores correlated to a certain degree. There is one plot for each species-pair and the order of the species indicates which species that contain the duplicate, e.g. AtGm contains the At1:Gm2 orthologs.</p>
 <p><img src="DuplicateGenes_files/figure-html/unnamed-chunk-1-1.svg" width="672" /><img src="DuplicateGenes_files/figure-html/unnamed-chunk-1-2.svg" width="672" /></p>
-<p>The set of genes that have a 1:1 ortholog relationship between At and Os are more likely to be essential and therefore have a conserved expression pattern. Given the recent WGD in Gm there are many of these genes that have duplicate orthologs in Gm (i.e. At1:Gm2). The plots below compare the ranks distribution of two groups of At1:Gm2 orthologs, those that are At1:Os1 (singleton) and those that are not. The singletons are expected to be under selective pressure to retain the expression pattern. It does not seem to be any significant difference between the groups regarding the correlation between the duplicate ranks, indicating that different selection pressure does not affect difference in the expression between the two duplicates since the duplication in Gm. However, there is a significant difference in the mean ranks of the two duplicates in the two groups, i.e. the singleton group tend to have higher ranks. This might indicate that most of the expression divergence occured in the At lineage or before the WGD in the Gm lineage. If we compare the ranks of the At1:Os1 orthologs with the corresponding mean ranks of the At1:Gm2 orthologs we see that they correlate well but that At1:Gm2 rarely have higher rank than At1:Os1. As At:Os is more distantly related than At:Gm this is not expected. A boring explanation could be that the reduced ranks in At:Gm is mainly a result of sample bias in Gm.</p>
+</div>
+<div id="at1gm2" class="section level2">
+<h2>At1:Gm2</h2>
+<p>The set of genes that have a 1:1 ortholog relationship between At and Os are more likely to be essential and therefore have a conserved expression pattern. Given the recent WGD in Gm there are many of these genes that have duplicate orthologs in Gm (i.e. At1:Gm2). The plots below compare the ranks distribution of two groups of At1:Gm2 orthologs, those that are At1:Os1 (singleton) and those that are not. The singletons are expected to be under selective pressure to retain the expression pattern.</p>
+<p>There seems to be a lower correlation between Gm duplicates among the singletons, perhaps an indication of a selective pressure to conserve only one of the duplicates (i.e. one duplicate is on the way to non-functionalizaition).</p>
+<p>However, there is a also significant difference in the mean ranks (see wilcoxon rank-sum test below) of the two duplicates in the two groups, i.e. the singleton group tend to have higher ranks in general. This might indicate that most of the expression divergence occured in the At lineage or before the WGD in the Gm lineage.</p>
 <p><img src="DuplicateGenes_files/figure-html/testGmDuplicateWithOsSingleton-1.svg" width="672" /></p>
 <p><img src="DuplicateGenes_files/figure-html/unnamed-chunk-2-1.svg" width="672" /></p>
+<p>If we compare the ranks of the At1:Os1 orthologs with the corresponding mean ranks of the At1:Gm2 orthologs we see that they correlate well but that At1:Gm2 rarely have higher rank than At1:Os1. As At:Os is more distantly related than At:Gm this is not expected. A boring explanation could be that the reduced ranks in At:Gm is mainly a result of sample bias in Gm.</p>
 <p><img src="DuplicateGenes_files/figure-html/unnamed-chunk-3-1.svg" width="672" /></p>
 </div>
 

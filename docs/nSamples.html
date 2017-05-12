@@ -11,7 +11,7 @@
 
 
 
-<title>Within species comparison</title>
+<title>Effect of number of samples included</title>
 
 <script src="site_libs/jquery-1.11.3/jquery.min.js"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -202,52 +202,35 @@ $(document).ready(function () {
 
 
 
-<h1 class="title toc-ignore">Within species comparison</h1>
+<h1 class="title toc-ignore">Effect of number of samples included</h1>
 
 </div>
 
 
-<div id="aim-of-the-analysis" class="section level2">
-<h2>Aim of the analysis</h2>
-<p>Compare sub-sets of samples from the same species to quantify the effect of the sample selection alone.</p>
+<div id="aim-of-the-analysis" class="section level3">
+<h3>aim of the analysis</h3>
+<p>Illustrate how the number of samples affect the ortholog rank score (ORS).</p>
 </div>
-<div id="random-sample-splitting" class="section level2">
-<h2>Random sample splitting</h2>
-<p>For each species the samples are split into two sub-sets by randomly selecting half of the studies. This ensures that for each of the sub-set pairs, the two halves do not share any samples from the same study (such as biological replicates). Note that the number of samples in each sub-set will not be the same. Splitting was repeated 10 times to generate 10 sub-set pairs (later refered to as reps or sample sub-sets). The plot below gives an overview of the sample were split into sub-set pairs:</p>
-<p><img src="WithinSpecies_files/figure-html/sampleSelection-1.png" width="672" /><img src="WithinSpecies_files/figure-html/sampleSelection-2.png" width="672" /><img src="WithinSpecies_files/figure-html/sampleSelection-3.png" width="672" /><img src="WithinSpecies_files/figure-html/sampleSelection-4.png" width="672" /><img src="WithinSpecies_files/figure-html/sampleSelection-5.png" width="672" /></p>
+<div id="method" class="section level3">
+<h3>Method</h3>
+<p>To test the effect of the number of samples we picked subsets of various sizes out of the 1363 <em>At</em> samples available and calculated ORS (MI+CLR) against the full set of <em>Os</em> samples (454 samples). Only 1:1 orthologs were included (~5k genes) to save computation time.</p>
+<p>Samples were randomized in two different ways, either by shuffling the order of the individual samples or by shuffling the order of the studies (i.e. sets of samples from the same experiment). Note that keeping the samples from each study together is closer to the realistic situation where all available data are used. Using the randomized sample order, the first 12,25,50,100,200,400 and 800 samples were used to calculate ORS. This was repeated 10 and 5 times, for study and individual sample randomization respectively.</p>
 </div>
-<div id="gene-selection" class="section level2">
-<h2>Gene selection</h2>
-<p>To reduce the computational cost, only a subset (n=4000) of the genes were included. Genes with 1:1 orthologs to several species are prioritized and if that is not enough (as is the case for Gm and Zm) then also include 2:1 orthologs.</p>
+<div id="result" class="section level3">
+<h3>Result</h3>
+<p>When randomizing by study, the median ORS always increase when the number of samples increases. In contrast, when randomizing by individaul samples, the ORS seem to reach the maximum and stay level after just one tenth of the samples have been included. Note that, although seldom, there are points were the additional samples results in a lower median ORS.</p>
+<p><strong>Figure text:</strong> Median ORS between <em>At</em> and <em>Os</em> using various number of <em>At</em> samples. Each of the thin lines represent one sample order randomizition, where each point represents the same samples as the previous point plus addition samples. The thick lines show the mean of the randomizations.</p>
+<p><img src="nSamples_files/figure-html/plot_nSamples-1.svg" width="672" /></p>
+<p>The figure below shows the same as above but with ORS for both directions (At -&gt; Os and Os -&gt; At).</p>
+<p><img src="nSamples_files/figure-html/plot_nSamples_withRnkDir-1.svg" width="672" /></p>
+<p>Alternative plot with -log10(1-ORS) transformed values:</p>
+<p><img src="nSamples_files/figure-html/plot_nSamples_withRnkDirlog-1.svg" width="672" /></p>
 </div>
-<div id="reference-ortholog-selection" class="section level2">
-<h2>Reference “ortholog” selection</h2>
-<p>When comparing within species there are no orthologs and any gene can be used as a reference “ortholog”. To make the comparison more similar to that of the between species we use the 1:1 orthologs to each of the other species as reference orthologs. Ranks are calculated once for each set of 1:1 orthologs against the other species. In later plots “refOrthoSpc” refer to the different sets of orthologs.</p>
-</div>
-<div id="results" class="section level2">
-<h2>results</h2>
-<p>The plot below shows the distribution of the resulting ranks for all within-species subsets (10reps x 4reforthos x 2dir x 4000genes) together with the ranks from the between species tests. Median is marked with diamond. Ranks are shown in -log10(P) scale (i.e. a value &gt;1 corresponds P&lt;0.1 and a value &gt;2 corresponds P&lt;0.01 etc.). As expected the within-species ranks are higher than between species.</p>
-<p><img src="WithinSpecies_files/figure-html/fullRankscompare-1.svg" width="864" /></p>
-</div>
-<div id="compare-randomized-subsets" class="section level2">
-<h2>compare randomized subsets</h2>
-<p><img src="WithinSpecies_files/figure-html/compareRepNr-1.svg" width="480" /></p>
-</div>
-<div id="compare-ref.orthos" class="section level2">
-<h2>compare ref.orthos</h2>
-<p><img src="WithinSpecies_files/figure-html/compRefOrthos-1.svg" width="864" /></p>
-<p><img src="WithinSpecies_files/figure-html/nRefcompare-1.svg" width="672" /></p>
-</div>
-<div id="rank-stability" class="section level2">
-<h2>rank stability</h2>
-<p>Do the same genes tend to have same ranks regardless of choice of sample subset? The plot below shows the correlation between the ranks in the subset replicates. There is a clear tendency to correlate even though it varies between the replicates, so in general there seems to be certain genes that tend to have higher ranks than others. This is expected as there are several gene specific properties that can affects its likelihood to get a high rank. Example of properties that are necessary to achieve a stable high rank:</p>
-<ul>
-<li>Many co-expressed genes</li>
-<li>Expressed in many conditions</li>
-<li>Large range of expression across samples.</li>
-</ul>
-<p>There seems to be very little effect of ref.orthos and while there is differences between the species, it is far less than the variation between replicates.</p>
-<p><img src="WithinSpecies_files/figure-html/rankCorr-1.svg" width="864" /></p>
+<div id="discussion" class="section level3">
+<h3>Discussion</h3>
+<p>The results show that including more samples is almost always better. Interrrestingly, it also shows that similar performance can be achieved by using only a tenth of the samples when they are drawn randomly from the full set of studies. This indicates that diversity rather than just numbers is important. (As most studies contain replicates and control for certain conditions they will limit the number of possible regulatory states.)</p>
+<p>Other co-expression studies have used methods were samples are filtered and/or weighted to improve the results. It would be interresting to test whether such methods could give higher ORS than by simply inlcuding all samples.</p>
+<p>I would like to point out that in this test the ORS is limited by the Os samples and by the actual biological differnces between Os and At.</p>
 </div>
 
 
