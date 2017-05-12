@@ -223,6 +223,17 @@ fl <- makeCompareMethodsFlow()
 fobj <- Rflow(flowname = "cm",fl)
 
 
+##  nSamples ####
+#
+# 
+#
+
+source("subflows/makeNSamplesFlow.R")
+
+fl <- makeNSamplesFlow()
+
+fobj <- Rflow(flowname = "nSamples", fl)
+
 ##  submit flow ####
 #
 # 
@@ -250,6 +261,7 @@ plot_flow(fobj, detailed=FALSE)
 #
 
 fobj <- flowr:::read_fobj("/mnt/users/lagr/flowr/runs/MI_CCS-foo-20170419-17-55-29-PjHcJ5XN/")
+fobj <- flowr:::read_fobj("/mnt/users/lagr/flowr/runs/cm-foo-20170504-10-53-46-LMDX0Gph/")
 
 ## example get jobIDs ####
 #
@@ -283,6 +295,8 @@ getJobStatus(jobIDs)
 jobs <- names(fobj@jobs) %>% .[grepl("Gm",.)] # get all jobs with Gm in name
 fobj <- flowr::rerun(fobj, select = jobs,kill = F)
 
+
+
 ####
 #
 #  example: using the startFromJob function
@@ -296,6 +310,9 @@ fobj <- flowr::rerun(fobj, select = jobs,kill = F)
 #   startFromJob("Os_prepMI") %>%
 #   Rflow( flowname = "CoExCorr" )
 
+
+
+
 ####
 #
 #  example: resubmit from job 3
@@ -305,6 +322,9 @@ fobj <- flowr::rerun(fobj, select = jobs,kill = F)
 
 # it works even with the dependencies because the fobj contains the jobIDs for
 # the previous job.. But it does not let you select specific jobs
+
+
+
 
 ####
 #
@@ -319,3 +339,39 @@ fobj <- flowr::rerun(fobj, select=jobs, kill=F) # resubmit
 
 
 
+
+####
+#
+# example: resume after failed subjobs
+#
+
+# first stop all pending jobs (assume they are waiting for the failed jobs)
+killPendingJobs(fobj)
+
+# resubmitted only failed subjobs of a specified job:
+fobj <- resubmitFailedSubJobs(fobj,jobNames = "calcCor")
+# Note.. resubmitFailedSubJobs does not reset the trigger files so the status
+
+# note: is there any way to submit the downstream jobs?
+
+
+
+
+####
+#
+# example: fix for (launch failed requeued held)
+#
+
+qState <- system("squeue -u lagr -h",intern=T)
+ids <- sub("[ ]+([0-9]+).*","\\1",qState)[grepl("(launch failed requeued held)",qState)]
+
+system(paste("scontrol hold",paste(ids,collapse=",")))
+system(paste("scontrol release",paste(ids,collapse=",")))
+
+for(id in ids[11:12]){
+  # cmd <- paste("scontrol hold",id)
+  cmd <- paste("scontrol release",id)
+  cat(cmd,"\n")
+  system(cmd)
+  # Sys.sleep(1)
+}
