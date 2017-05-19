@@ -220,7 +220,7 @@ $(document).ready(function () {
 </ul>
 <p>This was combined with several different methods of “normalising” the correlation matrix:</p>
 <ul>
-<li>CLR: context likelihood ratio. (z-score with 0 as threashold)</li>
+<li>CLR: context likelihood ratio. (z-score with 0 as threshold)</li>
 <li>MR: inspired by the “mutual rank” measure used in ATTED-II transformed with log2(N/MR)</li>
 <li>none: just use correlation matrix directly</li>
 <li>TOM: Topological overlap as used in WGCNA. First take absolute value of correlation matrix, then scale-free exponent (fixed to 6) followed by TOM.</li>
@@ -234,7 +234,127 @@ $(document).ready(function () {
 <p>Below are the median and mean of the ORSs. (Higher is better)</p>
 <p><img src="CompareMethods_files/figure-html/plotMedianRanks-1.svg" width="672" /></p>
 <p><img src="CompareMethods_files/figure-html/plotMeanRanks-1.svg" width="672" /></p>
-<p>Judging by the median, the best combination is PCC+MR, but by the mean there is not much difference. TOM performs worse than doing nothing, but it might not be a fair comparison as it could be the choice of exponent.</p>
+<p>Judging by the median, the best combination is PCC+MR, closely followed by SCC+MR. If judging by the mean ORS, there is almost no difference between MI+MR, MI+CLR and PCC+MR. It is clear that using CLR or MR improves the ORS while TOM seems to perform worse than doing nothing. Note that only a single soft-threshold exponent was tested for calulating the TOM.</p>
+</div>
+<div id="all-species-pairs" class="section level3">
+<h3>All species pairs</h3>
+<p>As it was such a close call, the same procedure was performed on all species pairs (again including only the 1:1 orthologs to save computation time).</p>
+<p><img src="CompareMethods_files/figure-html/plotAllMedianRanks-1.svg" width="672" /></p>
+<p>The best method for each species pair and direction is listed in the following table:</p>
+<table>
+<thead>
+<tr class="header">
+<th align="left">spcPairDir</th>
+<th align="left">bestMethodMedian</th>
+<th align="left">bestMethodMean</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">At –&gt; Gm</td>
+<td align="left">PCC+MR</td>
+<td align="left">PCC+MR</td>
+</tr>
+<tr class="even">
+<td align="left">At –&gt; Os</td>
+<td align="left">PCC+MR</td>
+<td align="left">MI+MR</td>
+</tr>
+<tr class="odd">
+<td align="left">At –&gt; Sl</td>
+<td align="left">PCC+MR</td>
+<td align="left">PCC+MR</td>
+</tr>
+<tr class="even">
+<td align="left">At –&gt; Zm</td>
+<td align="left">PCC+MR</td>
+<td align="left">PCC+MR</td>
+</tr>
+<tr class="odd">
+<td align="left">At &lt;– Gm</td>
+<td align="left">PCC+MR</td>
+<td align="left">PCC+MR</td>
+</tr>
+<tr class="even">
+<td align="left">At &lt;– Os</td>
+<td align="left">PCC+MR</td>
+<td align="left">MI+CLR</td>
+</tr>
+<tr class="odd">
+<td align="left">At &lt;– Sl</td>
+<td align="left">PCC+MR</td>
+<td align="left">PCC+MR</td>
+</tr>
+<tr class="even">
+<td align="left">At &lt;– Zm</td>
+<td align="left">SCC+MR</td>
+<td align="left">PCC+MR</td>
+</tr>
+<tr class="odd">
+<td align="left">Gm –&gt; Os</td>
+<td align="left">MI+CLR</td>
+<td align="left">MI+CLR</td>
+</tr>
+<tr class="even">
+<td align="left">Gm –&gt; Sl</td>
+<td align="left">PCC+MR</td>
+<td align="left">PCC+MR</td>
+</tr>
+<tr class="odd">
+<td align="left">Gm –&gt; Zm</td>
+<td align="left">MI+MR</td>
+<td align="left">MI+MR</td>
+</tr>
+<tr class="even">
+<td align="left">Gm &lt;– Os</td>
+<td align="left">PCC+MR</td>
+<td align="left">PCC+MR</td>
+</tr>
+<tr class="odd">
+<td align="left">Gm &lt;– Sl</td>
+<td align="left">PCC+MR</td>
+<td align="left">PCC+MR</td>
+</tr>
+<tr class="even">
+<td align="left">Gm &lt;– Zm</td>
+<td align="left">PCC+MR</td>
+<td align="left">SCC+MR</td>
+</tr>
+<tr class="odd">
+<td align="left">Os –&gt; Sl</td>
+<td align="left">PCC+MR</td>
+<td align="left">PCC+MR</td>
+</tr>
+<tr class="even">
+<td align="left">Os –&gt; Zm</td>
+<td align="left">PCC+MR</td>
+<td align="left">PCC+MR</td>
+</tr>
+<tr class="odd">
+<td align="left">Os &lt;– Sl</td>
+<td align="left">PCC+MR</td>
+<td align="left">PCC+MR</td>
+</tr>
+<tr class="even">
+<td align="left">Os &lt;– Zm</td>
+<td align="left">PCC+MR</td>
+<td align="left">PCC+MR</td>
+</tr>
+<tr class="odd">
+<td align="left">Sl –&gt; Zm</td>
+<td align="left">PCC+MR</td>
+<td align="left">PCC+MR</td>
+</tr>
+<tr class="even">
+<td align="left">Sl &lt;– Zm</td>
+<td align="left">PCC+MR</td>
+<td align="left">PCC+MR</td>
+</tr>
+</tbody>
+</table>
+<p>It looks like PCC+MR is the best method in general.</p>
+<p>Notice that the results are less clear when <em>Gm</em> is one of the included species (see figure below). It seems like MI results in a large gap between the ORS depending on the direction, which is reversed and less pronounced with PCC. Hard to say why this is so, but one factor could be that few genes were included in the analysis as <em>Gm</em>’s recent duplication results in few 1:1 orthologs.</p>
+<p><img src="CompareMethods_files/figure-html/plotMethodsGmNoGm-1.svg" width="672" /></p>
 </div>
 </div>
 

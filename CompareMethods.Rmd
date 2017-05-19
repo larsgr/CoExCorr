@@ -27,7 +27,7 @@ Three different correlation methods were tested, namely:
 
 This was combined with several different methods of "normalising" the correlation matrix:
 
-* CLR: context likelihood ratio. (z-score with 0 as threashold)
+* CLR: context likelihood ratio. (z-score with 0 as threshold)
 * MR: inspired by the "mutual rank" measure used in ATTED-II transformed with log2(N/MR)
 * none: just use correlation matrix directly
 * TOM: Topological overlap as used in WGCNA. First take absolute value of correlation matrix, then scale-free exponent (fixed to 6) followed by TOM.
@@ -36,19 +36,36 @@ The methods were applied to At and Os using all samples but only the 1:1 genes (
 
 ### results
 
-```{r loadData}
+```{r loadAllData}
 
-# load rnks data and unnest to a data_frame
-rnks <-
-  data_frame(mtype=c("MI","PCC","SCC")) %>% 
+spcs = c("At","Os","Sl","Gm","Zm")
+  
+rnks <- 
+  # generate all combinations of species
+  crossing( spc1=spcs, spc2=spcs) %>% 
+  filter(spc1 < spc2) %>%
+  # paste together
+  with(paste0(spc1,spc2)) %>% 
+  # generate all combinations of spcPairs and correlation methods
+  crossing( spcPair=., mtype=c("MI","PCC","SCC")) %>%
+  # load ranks
   mutate( 
-    filename = paste0("data/subsets/compareMethods/AtOs_rnks_",mtype,".RDS"),
+    filename = paste0("data/subsets/compareMethods/",spcPair,"/",spcPair,"_rnks_",mtype,".RDS"),
     rnks = map(filename,readRDS),
     filename = NULL) %>% 
   unnest1(.id = "clrMethod") %>% 
   unnest1(.id = "dir")
 
+sumRnks <- 
+  rnks %>% 
+  mutate( medRnks = map_dbl(rnks, median, na.rm=T),
+          meanRnks = map_dbl(rnks, mean, na.rm=T),
+          rnks = NULL)
+
+
+
 ```
+
 
 The curves below represents the reverse cumulative distribution of ortholog rank scores (ORS). Whole and dotted lines represent the direction, i.e. from At->Os and Os->At respectively.
 
@@ -62,9 +79,10 @@ par(pty="s")
 for( mtype_ in unique(rnks$mtype)){
   newRanksPlot(main = mtype_)
   rnks %>% 
+    filter(spcPair=="AtOs") %>% 
     filter(mtype==mtype_) %>% 
     transmute( col = clrMethod2color[clrMethod],
-               lty = c(AtOs=1, OsAt=2)[dir],
+               lty = c(rnk=1, rnkT=2)[dir],
                rnk = rnks) %>% 
     pwalk(drawRanksCurve, lwd=2)
 }
@@ -76,36 +94,85 @@ par(pty="m")
 
 ```
 
-```{r summarizeRnks}
-sumRnks <- 
-  rnks %>% 
-  mutate( medRnks = map_dbl(rnks, median),
-          meanRnks = map_dbl(rnks, mean),
-          rnks = NULL)
-
-
-
-```
-
 Below are the median and mean of the ORSs. (Higher is better)
 
 ```{r plotMedianRanks, fig.height=3}
 sumRnks %>% 
+  filter(spcPair=="AtOs") %>% 
+  mutate( dir=factor(dir,levels = c("rnk","rnkT"),labels = c("At --> Os", "At <-- Os"))) %>%
   ggplot(aes(y=medRnks,x=clrMethod,shape=dir, color=clrMethod)) +
   scale_colour_brewer(palette = "Set1") +
   geom_point(size=2) +
   facet_grid(. ~ mtype) +
-  ylab("median ORS")
+  ylab("median ORS") +
+  xlab("Method")
 ```
 
 ```{r plotMeanRanks, fig.height=3}
 sumRnks %>% 
+  filter(spcPair=="AtOs") %>% 
+  mutate( dir=factor(dir,levels = c("rnk","rnkT"),labels = c("At --> Os", "At <-- Os"))) %>%
   ggplot(aes(y=meanRnks,x=clrMethod,shape=dir, color=clrMethod)) +
   scale_colour_brewer(palette = "Set1") +
   geom_point(size=2) +
   facet_grid(. ~ mtype) +
-  ylab("mean ORS")
+  ylab("mean ORS") +
+  xlab("Method")
 ```
 
-Judging by the median, the best combination is PCC+MR, but by the mean there is not much difference. TOM performs worse than doing nothing, but it might not be a fair comparison as it could be the choice of exponent.
+Judging by the median, the best combination is PCC+MR, closely followed by SCC+MR. If judging by the mean ORS, there is almost no difference between MI+MR, MI+CLR and PCC+MR. It is clear that using CLR or MR improves the ORS while TOM seems to perform worse than doing nothing. Note that only a single soft-threshold exponent was tested for calulating the TOM.
+
+
+### All species pairs
+
+As it was such a close call, the same procedure was performed on all species pairs (again including only the 1:1 orthologs to save computation time).
+
+```{r plotAllMedianRanks,fig.height=12}
+sumRnks %>% 
+  mutate( dir=factor(dir,levels = c("rnk","rnkT"),labels = c(" --> ", " <-- "))) %>%
+  ggplot(aes(y=medRnks,x=clrMethod,shape=dir, color=clrMethod)) +
+  scale_colour_brewer(palette = "Set1") +
+  geom_point(size=2) +
+  facet_grid(spcPair ~ mtype) +
+  ylab("median ORS")
+```
+
+The best method for each species pair and direction is listed in the following table:
+
+```{r bestMethodsTable}
+sumRnks %>%
+  mutate( spcPairDir = ifelse(dir=="rnkT",
+                           sub("(..)(..)","\\1\ <-- \\2",spcPair),
+                           sub("(..)(..)","\\1\ --> \\2",spcPair)) ) %>% 
+  group_by(spcPairDir) %>% 
+  summarise( bestMethodMedian= 
+               paste0( mtype[which.max(medRnks)], "+",
+                       clrMethod[which.max(medRnks)]),
+             bestMethodMean= 
+               paste0( mtype[which.max(meanRnks)], "+",
+                       clrMethod[which.max(meanRnks)]) ) %>% 
+  knitr::kable()
+```
+
+It looks like PCC+MR is the best method in general.
+
+Notice that the results are less clear when _Gm_ is one of the included species (see figure below). It seems like MI results in a large gap between the ORS depending on the direction, which is reversed and less pronounced with PCC. Hard to say why this is so, but one factor could be that few genes were included in the analysis as _Gm_'s recent duplication results in few 1:1 orthologs. 
+
+```{r plotMethodsGmNoGm}
+sumRnks %>% 
+  filter(!(clrMethod=="CLR" & mtype=="PCC"),
+         clrMethod %in% c("CLR","MR"),
+         mtype != "SCC") %>%
+  mutate( hasGm=ifelse(grepl("Gm",spcPair),"with Gm","no Gm")) %>%
+  mutate( dir=factor(dir,levels = c("rnk","rnkT"),labels = c(" --> ", " <-- "))) %>%
+  ggplot(aes(y=medRnks,x=interaction(clrMethod,mtype),shape=dir, color=spcPair)) +
+  scale_colour_brewer(palette = "Paired") +
+  geom_line(aes(group=interaction(spcPair,dir),linetype=dir)) +
+  geom_point(size=2) +
+  theme_bw() +
+  facet_grid(~ hasGm) +
+  ylab("median ORS") +
+  xlab("Method")
+
+```
 

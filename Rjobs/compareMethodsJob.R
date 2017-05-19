@@ -1,37 +1,45 @@
 
+sp2expMatFiles <- c(
+  At = "data/expMat/PODC_At.RDS",
+  Os = "data/expMat/PODC_Os.RDS",
+  Sl = "data/expMat/PODC_Sl.RDS",
+  Gm = "data/expMat/EBI_Gm.RDS",
+  Zm = "data/expMat/EBI_Zm.RDS")
+
 # get the At1Os1 geneIDs that also have expresion
-getAt1Os1GeneIds <- function(outDir){
-  dir.create(outDir,showWarnings = F)
+get11GeneIds <- function(spc1,spc2,outDir){
+  source("R/orthoUtils.R")
+  dir.create(outDir,showWarnings = F,recursive = T)
   
-  orthoFile <- "indata/orthologs/At_Os_orthologs.txt"
-  cat("Reading",orthoFile,"...\n")
-  orthos <- read.table(orthoFile,header=T,as.is = T)
+  cat("Reading",spc1,spc2,"orthologs...\n")
+  
+  orthos <- loadOrthoTable(spc1,spc2)
   
   # get 1:1 orthos
   orthos11 <- orthos[orthos$otype == "1:1",]
     
   # filter only orthos with expression in both species
-  for(spc in c("At","Os")){
+  for(spc in c(spc1,spc2)){
     # load expression matrix
-    expMatFile <- paste0("data/expMat/PODC_",spc,".RDS")
+    expMatFile <- sp2expMatFiles[spc]
     cat("Reading",expMatFile,"...\n")
     expMat <- readRDS(expMatFile)
     orthos11 <- orthos11[orthos11[[spc]] %in% rownames(expMat), ]
   }
   
   # write geneIDs to file
-  for(spc in c("At","Os")){
+  for(spc in c(spc1,spc2)){
     geneIDs <- orthos11[[spc]]
-    outFile <- file.path(outDir,paste0(spc,"_At1Os1_geneIDs.RDS"))
+    outFile <- file.path(outDir,paste0(spc,"_11_geneIDs.RDS"))
     cat("Writing",outFile,"...\n")
     saveRDS(geneIDs,outFile)
   }
 }
 
 
-calcCor <- function( expMatFile, geneIDsubsetFile, outFile, method){
+calcCor <- function( spc, geneIDsubsetFile, outFile, method){
   library(BSplineMI)
-  expMat <- readRDS(expMatFile)
+  expMat <- readRDS(sp2expMatFiles[spc])
   geneIDs <- readRDS(geneIDsubsetFile)
   if( method == "MI"){
     M <- calcSplineMI(expMat[geneIDs, ],nBins = 7,splineOrder = 3)
@@ -51,14 +59,34 @@ calcMutualRank <- function(M){
 }
 
 calcTOM <- function(M){
+  # use absolute correlation
   M <- abs(M)
+  
+  # quick fix for NA values
+  M[is.na(M)] <- 0
+  
+  # scale to get a value between 0..1 (needed for MI)
   if(max(M)>1)
     M <- M/max(M)
   
+  # Use exponent 6 as soft threshold (as advised on WGCNA webpage)
   TOM <- TOMsimilarity(M^6)
   dimnames(TOM) <- dimnames(M)
   diag(TOM) <- 0
   return(TOM)
+}
+
+removeNAs <- function(M){
+  # quick fix for NA values
+  M[is.na(M)] <- 0
+  
+  return(M)
+}
+
+
+calcCLR_diag0 <- function(M){
+  diag(M) <- NA
+  calcCLR(M)
 }
 
 myLog <- function(...){
@@ -66,15 +94,11 @@ myLog <- function(...){
 }
 
 # calculate rank scores using different CLR methods
-# uses 8 processes
 calcScore <- function(M1file,M2file,outFile){
-  library(parallel)
   library(WGCNA)
-  source("R/loadTriMatrix.R")
   source("R/CLR.R")
   source("R/calcRanks.R")
-  source("R/mc_cor.R")
-  
+
   Mfiles <- c(M1file,M2file)
   spcs <- sub("(..).*","\\1",basename(Mfiles))
   names(Mfiles) <- spcs
@@ -82,26 +106,25 @@ calcScore <- function(M1file,M2file,outFile){
   myLog("Loading",Mfiles,"...\n")
   M <- lapply( Mfiles, readRDS )
   
-  mclapply( mc.cores = 4, 
-            c(CLR=calcCLR,MR=calcMutualRank,TOM=calcTOM, none=function(x){x}),
-            function(CLRmethod){
+  lapply( c(CLR=calcCLR_diag0,MR=calcMutualRank,TOM=calcTOM, none=removeNAs),
+          function(CLRmethod){
     myLog("Calculating CLR..\n")
-    CLR <- mclapply(M,CLRmethod,mc.cores = 2)
+    CLR <- lapply(M,CLRmethod)
     myLog("Calculating CCS..\n")
-    CCS <- mc_cor2(CLR$At,CLR$Os,2)
+    CCS <- cor(CLR[[1]],CLR[[2]])
     myLog("Calculating Ranks..\n")
     rnks <- list(
-      AtOs = quickRanks(CCS, spc1genes = rownames(CCS), spc2genes = colnames(CCS)),  
-      OsAt = quickRanksT(CCS, spc1genes = colnames(CCS), spc2genes = rownames(CCS))
+      rnk = quickRanks(CCS, spc1genes = rownames(CCS), spc2genes = colnames(CCS)),  
+      rnkT = quickRanksT(CCS, spc1genes = colnames(CCS), spc2genes = rownames(CCS))
     )
     return(rnks)
   }) -> rnksAll # each correlation method
   
   saveRDS(rnksAll,outFile)
   
-  if(any(sapply(rnksAll,methods::is,"try-error"))){
-    stop("Error inside mclapply. See ",outFile," for error message.")
-  }
+  # if(any(sapply(rnksAll,methods::is,"try-error"))){
+  #   stop("Error inside mclapply. See ",outFile," for error message.")
+  # }
 }
 
 

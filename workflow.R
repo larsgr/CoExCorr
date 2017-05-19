@@ -218,7 +218,7 @@ Rflow(
 
 source("subflows/makeCompareMethodsFlow.R")
 
-fl <- makeCompareMethodsFlow()
+fl <- makeCompareMethodsAllFlow()
 
 fobj <- Rflow(flowname = "cm",fl)
 
@@ -234,7 +234,7 @@ fl <- makeNSamplesFlow()
 
 fobj <- Rflow(flowname = "nSamples", fl)
 
-##  submit flow ####
+##  SUBMIT FLOW ####
 #
 # 
 #
