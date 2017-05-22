@@ -18,51 +18,11 @@ source("R/flowrSlurmUtils.R")
 #
 # 
 #
+source("subflows/makeProcessExpMatFlow.R")
 
+fl <- makeProcessExpMatFlow()
 
-fobj <- Rflow(
-  flowname = "CoExCorr",
-  
-  #processExpMat_PODC(spc)
-  Rjob(
-    jobName = "processExpMat_Os",
-    source = "Rjobs/processExpMat.R",
-    fun = "processExpMat_PODC",
-    paramMat = data.frame( spc = "Os" )
-  ),
-
-  # processExpMat_PODC(spc)
-  Rjob(
-    jobName = "processExpMat_At",
-    source = "Rjobs/processExpMat.R",
-    fun = "processExpMat_PODC",
-    paramMat = data.frame( spc = "At" )
-  ),
-
-  # processExpMat_PODC(spc)
-  Rjob(
-    jobName = "processExpMat_Sl",
-    source = "Rjobs/processExpMat.R",
-    fun = "processExpMat_PODC",
-    paramMat = data.frame( spc = "Sl" )
-  ),
-  
-
-  # processExpMat_ebi( spc)
-  Rjob(
-    jobName = "processExpMat_Zm",
-    source = "Rjobs/processExpMat.R",
-    fun = "processExpMat_ebi",
-    paramMat = data.frame( spc = "Zm" )
-  ),
-  # processExpMat_ebi( inPath, outFile)
-  Rjob(
-    jobName = "processExpMat_Gm",
-    source = "Rjobs/processExpMat.R",
-    fun = "processExpMat_ebi",
-    paramMat = data.frame( spc = "Gm" ) 
-  )  
-)
+fobj <- Rflow(flowname = "CoExCorr",fl)
 
 
 ####
@@ -249,7 +209,7 @@ fobj <- submit_flow(fobj,execute = T, plot=F)
 status(fobj)
 
 # check status (extended version)
-kable(qstatus(fobj,use_cache = F))
+knitr::kable(qstatus(fobj,use_cache = F))
 
 # kill(fobj)
 system("sacct")

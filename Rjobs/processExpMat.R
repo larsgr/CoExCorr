@@ -1,3 +1,17 @@
+
+# log transform gene expression data
+logTransform <- function(expMat){
+  log2(1+expMat)
+}
+
+# filter gene expression data, i.e. remove rows with 0 variance
+filterExpMat <- function(expMat){
+  geneVariance <- apply(expMat,1,var)
+  expMat[geneVariance > 0, ]
+}
+
+
+
 ####
 #
 # processExpMatConvertIDs
@@ -37,8 +51,11 @@ processExpMatConvertIDs <- function( inFile, outFile, convertID ){
     dstExp[isNotNA, ] <- dstExp[isNotNA, ] + srcExp[idx, ]
   }
   
+  # filter genes
+  dstExp <- filterExpMat(dstExp)
+
   # log transform
-  dstExp <- log2(0.1+dstExp)
+  dstExp <- logTransform(dstExp)
   
   # Make directory if it doesn't exist
   if( !file.exists(dirname(outFile)) ){
@@ -50,7 +67,7 @@ processExpMatConvertIDs <- function( inFile, outFile, convertID ){
 }
 
 
-processExpMat_ebi <- function( spc ){
+processExpMat_EBI <- function( spc ){
   library(readr)
   source("R/PODCfiles.R")
   
@@ -80,9 +97,12 @@ processExpMat_ebi <- function( spc ){
   # reorder and remove columns to match metadata
   expMat <- expMat[ , match(sampleMeta$Run, colnames(expMat)) ]
   
+  # filter genes
+  expMat <- filterExpMat(expMat)
+
   # log transform
-  expMat <- log2(0.1+expMat)
-  
+  expMat <- logTransform(expMat)
+
   # Make directory if it doesn't exist
   if( !file.exists(dirname(outFile)) ){
     dir.create(dirname(outFile),recursive = T, showWarnings = F)
