@@ -50,6 +50,40 @@ fobj <- Rflow(flowname = "convertTrees",
                    paramMat = data.frame(outDir = 'data/treeData') ) )
 
 
+## Full PCC+MR+CCS ####
+#
+# 
+#
+source("subflows/makePCCandMRflow.R")
+
+PCCMRFlowDef <-
+  tribble(
+    ~spc, ~memReq, ~cores,
+    "At",   "30G",     20,
+    "Os",   "60G",     20,
+    "Sl",   "34G",     10,
+    "Gm",   "86G",     30,
+    "Zm",   "50G",     20 )
+
+CCSRanksFlowDef <- tribble(
+  ~spc1, ~spc2, ~cores, ~memReq,
+  "At", "Gm", 20, "71G",
+  "At", "Os", 20, "57G",
+  "At", "Sl", 20, "40G",
+  "At", "Zm", 20, "50G",
+  "Gm", "Os", 20, "94G",
+  "Gm", "Sl", 20, "75G",
+  "Gm", "Zm", 20, "86G",
+  "Os", "Sl", 20, "60G",
+  "Os", "Zm", 20, "71G",
+  "Sl", "Zm", 20, "53G")
+
+
+fl <- makePCC_MR_CCS_RanksFlow(PCCMRFlowDef,CCSRanksFlowDef,
+                               outDirMR="data/MR", outDirRnks="data/ranksMR")
+
+
+fobj <- Rflow(flowname = "FullPCCMR",fl)
 
 ## Full MI+CLR+CCS ####
 #
