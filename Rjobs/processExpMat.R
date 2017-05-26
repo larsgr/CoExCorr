@@ -51,11 +51,11 @@ processExpMatConvertIDs <- function( inFile, outFile, convertID ){
     dstExp[isNotNA, ] <- dstExp[isNotNA, ] + srcExp[idx, ]
   }
   
-  # filter genes
-  dstExp <- filterExpMat(dstExp)
-
   # log transform
   dstExp <- logTransform(dstExp)
+
+  # filter genes
+  dstExp <- filterExpMat(dstExp)
   
   # Make directory if it doesn't exist
   if( !file.exists(dirname(outFile)) ){
@@ -97,12 +97,12 @@ processExpMat_EBI <- function( spc ){
   # reorder and remove columns to match metadata
   expMat <- expMat[ , match(sampleMeta$Run, colnames(expMat)) ]
   
-  # filter genes
-  expMat <- filterExpMat(expMat)
-
   # log transform
   expMat <- logTransform(expMat)
-
+  
+  # filter genes
+  expMat <- filterExpMat(expMat)
+  
   # Make directory if it doesn't exist
   if( !file.exists(dirname(outFile)) ){
     dir.create(dirname(outFile),recursive = T, showWarnings = F)
