@@ -2,9 +2,8 @@ source("R/flowrUtils.R")
 library(purrr)
 
 # Helper function that add specified dependency to first job in flowlist
-addDepsToFlowList <- function(fl, prev_jobs, dep_type){
+addDepsToFlowList <- function(fl, prev_jobs){
   fl$flowdef$prev_jobs[1] <- prev_jobs
-  fl$flowdef$dep_type[1] <- dep_type
   return(fl)
 }
 
@@ -20,7 +19,7 @@ makeWithinSpeciesSpcFlow <- function(spc,
     cpu_reserved = cores,
     memory_reserved = mem,
     source = "Rjobs/withinSpeciesJobs.R", 
-    fun = "withinSpeciesJob",
+    fun = "withinSpeciesPCCMRJob",
     paramMat = data.frame(
       spc = spc,
       repNr = 1:reps,
@@ -52,8 +51,7 @@ makeWithinSpeciesFlow <- function(numberOfGenes = 4000,
            cores = cores,mem = mem) %>% 
       map2( spcs, subFlow) %>%             # add spc to jobname
       map( addDepsToFlowList,              # add dependency to prep job
-           prev_jobs = "withinSpeciesPrepJob", 
-           dep_type = "burst") %>% 
+           prev_jobs = "withinSpeciesPrepJob") %>% 
       reduce( flowbind )                   # combine
   ) 
 }

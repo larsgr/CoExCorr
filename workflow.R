@@ -162,9 +162,7 @@ fl <- makeWithinSpeciesFlow()
 
 fobj <- 
   fl %>% 
-  # startFromJob( startJob = "SlwithinSpeciesJob") %>% 
-  Rflow(flowname = "WithinSpecies" ) %>% 
-  plot_flow()
+  Rflow(flowname = "WithinSpecies" )
 
 
 ## self CCS ####
@@ -362,10 +360,3 @@ ids <- sub("[ ]+([0-9]+).*","\\1",qState)[grepl("(launch failed requeued held)",
 system(paste("scontrol hold",paste(ids,collapse=",")))
 system(paste("scontrol release",paste(ids,collapse=",")))
 
-for(id in ids[11:12]){
-  # cmd <- paste("scontrol hold",id)
-  cmd <- paste("scontrol release",id)
-  cat(cmd,"\n")
-  system(cmd)
-  # Sys.sleep(1)
-}

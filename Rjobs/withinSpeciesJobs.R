@@ -118,3 +118,123 @@ withinSpeciesJob <- function(spc, repNr, outDir = "data/subsets/withinSpecies", 
   rnkFile <- file.path(spcOutDir,paste0("rnks_",repNr,".RDS"))
   saveRDS(ranksAll,rnkFile)
 }
+
+calcLogMR <- function(pcc){
+  #   MR = sqrt( r(i,j)*r(j,i) )
+  #   logMR = 0.5*( log2(r(i,j)) + log2(r(j,i)) )
+  
+  rankMat <- log2(apply(-pcc,2,rank))
+
+  nGenes <- nrow(pcc)
+
+  return( log2(nGenes) - 0.5*(rankMat+t(rankMat)) )
+  
+  # note: adding log2(nGenes) and multiplying with -0.5 has no effect on CCS
+  # it simply changes the scale to something similar to CLR
+}
+
+
+
+setDiagToMean <- function(mr){
+  # set the diagonal equal to the 
+  diag(mr) <- NA
+  diag(mr) <- rowMeans(mr,na.rm = T)
+  return(mr)
+}
+
+calcCCS <- function( mr1, mr2, refOrthos1,refOrthos2){
+  # Set self co-expression values to mean to ignore it from correlation
+  # This is similar to setting it to NA but the following correlation is faster
+  mapply(SIMPLIFY = F, mr=list(mr1,mr2),refOrthos=list(refOrthos1,refOrthos2), FUN=function(mr,refOrthos){
+     m <- mr[refOrthos, ]
+     rowi <- match(colnames(m),rownames(m))
+     for(i in which(!is.na(rowi))){
+       m[rowi[i],i] <- mean(m[-rowi[i],i])
+     }
+     return(m)
+  }) -> M
+  
+  # calculate CCS
+  return( WGCNA::cor(M[[1]],M[[2]]) )
+}
+
+
+# For each replicate (2 cpu, 4 GB job)
+withinSpeciesPCCMRJob <- function(spc, repNr, outDir = "data/subsets/withinSpecies", cores = 2){
+  
+  library(parallel)
+  source("R/calcRanks.R")
+  
+  spcOutDir <- file.path(outDir,spc)
+  
+  
+  #   Read expression
+  expMat <- readRDS( file.path(spcOutDir, "expMat.RDS" ) )
+  #   Read sample  subsets
+  ss <- readRDS( file.path(spcOutDir, "sampleSubset.RDS" ) )
+  
+  myLog("Starting PCC+MR calculation for",spc,"rep nr.",repNr,"\n")
+  
+  # extract both half expression matrix subsets
+  lapply(c(TRUE, FALSE),function( isFirstHalf ){
+    # get sample IDs for this specific rep of subset
+    studyIDsubset <- names(which(ss$subsetMat[ ,repNr] == isFirstHalf))
+    sampleIDsubset <- ss$sampleID[ ss$studyID %in% studyIDsubset]
+    return(expMat[ ,sampleIDsubset])
+  }) -> expMatSubsets
+  
+  # Find genes with no variance in either subset
+  do.call( "|", lapply(expMatSubsets,function(x){
+    apply(x,1,max)==apply(x,1,min) # max=min -> no variance!
+  })) -> noVar
+  
+  #  Calculate PCC+MR for each of the two subset halves: (2 cpu)
+  mclapply(expMatSubsets, mc.cores = max(2,cores),FUN = function( x ){
+    # filter noVar genes and calculate PCC
+    pcc <- WGCNA::cor(t(x[!noVar, ]))
+    # Calculate MR
+    calcLogMR(pcc)
+  }) -> MR
+
+  # stop on warnings
+  if( length(warnings()) > 0){
+    warnings()
+    stop("Warning from mclapply")
+  } 
+  
+  myLog("PCC+MR calculation complete\n")
+  
+  refOrthosAll <- readRDS( file.path(spcOutDir, "refOrthos.RDS" ) )
+  
+  # For each set of ref.orthos
+  mclapply( refOrthosAll, mc.cores = cores, mc.silent = F, FUN = function( refOrthos ){
+    
+    myLog("Calculating CCS...\n")
+    
+    # filter noVar genes from ref.orthologs
+    filteredRefOrthos <- refOrthos[!(refOrthos %in% names(noVar)[noVar])]
+    
+    # Calc CCS
+    CCS <- calcCCS(MR[[1]], MR[[2]],filteredRefOrthos, filteredRefOrthos)
+
+    # Calc Ranks
+    return(
+      list(
+        rnks = quickRanks(CCS, spc1genes = rownames(CCS),spc2genes = colnames(CCS)),
+        rnksT = quickRanksT(CCS, spc1genes = colnames(CCS),spc2genes = rownames(CCS))
+        ))
+  }) -> ranksAll
+  
+  # stop on warnings
+  if( length(warnings()) > 0){
+    warnings()
+    stop("Warning from mclapply")
+  } 
+  
+  myLog("CCS calculation complete\n")
+  
+  #   Save ranks to file
+  rnkFile <- file.path(spcOutDir,paste0("rnks_",repNr,".RDS"))
+  saveRDS(ranksAll,rnkFile)
+}
+

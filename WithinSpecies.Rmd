@@ -8,8 +8,10 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 ```{r loadPackages, include=FALSE}
+library(plyr)
 library(tidyverse)
-library(ggplot2)
+
+source("R/divUtils.R") # unnest1
 ```
 
 ## Aim of the analysis
@@ -191,43 +193,26 @@ Do the same genes tend to have same ranks regardless of choice of sample subset?
 There seems to be very little effect of ref.orthos and while there is differences between the species, it is far less than the variation between replicates.
 
 ```{r rankCorr, fig.height=4, fig.width=9, dev='svg', echo=F}
-# flatten one level of a nested list inside a data.frame
-unnest1 <- function(x, .id){
-  listColIdx <- which(map_lgl(x,is.list))
-  if( length(listColIdx) != 1) stop("Must be exactly one list column")
-  
-  # extract the list column
-  l <- x[[listColIdx]]
-  x <- x[-listColIdx]
-  
-  # replace it with a list of names
-  x[[.id]] <- lapply(l, function(y){
-    if(is.null(names(y))){
-      return(as.character(seq_along(y)))
-    } else {
-      return(names(y))
-    }
-  })
-  # unnest names
-  x <- unnest(x)
-  # add unnested(flattened) list
-  x[[names(listColIdx)]] <- purrr::flatten(l)
-  
-  return(x)
-}
 
 # helper function to calculate the correlation between all the ranks
 rnksCor <- function(rnksList){
-  do.call(cbind,rnksList) %>% 
-    cor(use = 'pairwise.complete.obs') %>% 
-    .[lower.tri(.)]
+  # Because of missing expression values in some subsets there can be different number of genes 
+  # in the ORS vectors. 
+  
+  # Turn list of named ORS vectors into matrix and correlate
+  map( rnksList, t) %>%           # transpose each vector to form a row matrix
+    rbind.fill.matrix %>%   # bind the row matrices by names and fill missing values with NA
+    t %>% 
+    cor(use = 'pairwise.complete.obs') %>%  # correlate ranks
+    .[lower.tri(.)]   # keep only lower triangle
 }
+
 
 withinRnks %>% 
   unnest1( .id = "refOrthoSpc" ) %>% 
   unnest1( .id = "T" ) %>% 
-  group_by( spc, refOrthoSpc, T) %>% 
-  nest(rnks,.key = rnkCor) %>% 
+  group_by( spc, refOrthoSpc, T) %>%  # group together all reps per spc/refOrthoSpc/T
+  nest(rnks,.key = rnkCor) %>%    # nest the reps together in a list
   mutate(rnkCor = map(rnkCor, ~ rnksCor(.x$rnks))) %>%
   unnest() %>% 
   ggplot( aes( x=refOrthoSpc, y=rnkCor)) +
