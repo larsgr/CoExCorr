@@ -16,4 +16,7 @@ RNAseq_getStudiesByOrganism <- function( organism ){
   read_tsv(file = url, col_types = cols())
 }
 
-
+RNAseq_getSampleAttributesPerRunByStudy <- function( studyID ){
+  url <- paste0("http://www.ebi.ac.uk/fg/rnaseq/api/tsv/getSampleAttributesPerRunByStudy/",studyID)
+  read_tsv(file = url, col_types = cols())
+}
