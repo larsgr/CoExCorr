@@ -111,7 +111,7 @@ downloadRNAseq <- function(organism,dstPath,PODCmetadataFile = paste0("indata/",
        "of",nrow(sampleData),"samples. Downloading studies:\n\n")
 
   
-  # the fpkm url is not among the data but it has the same path as the CRAM url
+  # get the FPKM urls
   FPKMurls <- studyData$GENES_FPKM_COUNTS_FTP_LOCATION
   dstFiles <- file.path(dstPath,paste(studyData$STUDY_ID,basename(FPKMurls),sep = "."))
   
