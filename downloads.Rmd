@@ -38,13 +38,13 @@ PODCexpMatURLs <-
   c( # "http://plantomics.mind.meiji.ac.jp/podc/data/zea_mays_fpkm.tsv.gz",
     "http://plantomics.mind.meiji.ac.jp/podc/data/arabidopsis_thaliana_fpkm.tsv.gz",
     "http://plantomics.mind.meiji.ac.jp/podc/data/oryza_sativa_fpkm.tsv.gz",
-    "http://plantomics.mind.meiji.ac.jp/podc/data/solanum_lycopersicum_fpkm.tsv.gz",
-    "http://plantomics.mind.meiji.ac.jp/podc/data/sorghum_bicolor_fpkm.tsv.gz",
-    "http://plantomics.mind.meiji.ac.jp/podc/data/vitis_vinifera_fpkm.tsv.gz",
-    "http://plantomics.mind.meiji.ac.jp/podc/data/medicago_truncatula_fpkm.tsv.gz",
-    "http://plantomics.mind.meiji.ac.jp/podc/data/solanum_tuberosum_fpkm.tsv.gz",
+    "http://plantomics.mind.meiji.ac.jp/podc/data/solanum_lycopersicum_fpkm.tsv.gz"
+    #,"http://plantomics.mind.meiji.ac.jp/podc/data/sorghum_bicolor_fpkm.tsv.gz",
+    #"http://plantomics.mind.meiji.ac.jp/podc/data/vitis_vinifera_fpkm.tsv.gz",
+    #"http://plantomics.mind.meiji.ac.jp/podc/data/medicago_truncatula_fpkm.tsv.gz",
+    #"http://plantomics.mind.meiji.ac.jp/podc/data/solanum_tuberosum_fpkm.tsv.gz",
     # "http://plantomics.mind.meiji.ac.jp/podc/data/glycine_max_fpkm.tsv.gz",
-    "http://plantomics.mind.meiji.ac.jp/podc/data/nicotiana_tabacum_fpkm.tsv.gz"
+    #"http://plantomics.mind.meiji.ac.jp/podc/data/nicotiana_tabacum_fpkm.tsv.gz"
     )
 
 invisible( sapply(PODCexpMatURLs, myDownload) )
@@ -59,12 +59,12 @@ PODCmetadataURLs <-
   c("http://plantomics.mind.meiji.ac.jp/podc/data/arabidopsis_thaliana_sample.xls",
     "http://plantomics.mind.meiji.ac.jp/podc/data/oryza_sativa_sample.xls",
     "http://plantomics.mind.meiji.ac.jp/podc/data/solanum_lycopersicum_sample.xls",
-    "http://plantomics.mind.meiji.ac.jp/podc/data/sorghum_bicolor_sample.xls",
-    "http://plantomics.mind.meiji.ac.jp/podc/data/vitis_vinifera_sample.xls",
-    "http://plantomics.mind.meiji.ac.jp/podc/data/medicago_truncatula_sample.xls",
-    "http://plantomics.mind.meiji.ac.jp/podc/data/solanum_tuberosum_sample.xls",
+    #"http://plantomics.mind.meiji.ac.jp/podc/data/sorghum_bicolor_sample.xls",
+    #"http://plantomics.mind.meiji.ac.jp/podc/data/vitis_vinifera_sample.xls",
+    #"http://plantomics.mind.meiji.ac.jp/podc/data/medicago_truncatula_sample.xls",
+    #"http://plantomics.mind.meiji.ac.jp/podc/data/solanum_tuberosum_sample.xls",
     "http://plantomics.mind.meiji.ac.jp/podc/data/glycine_max_sample.xls",
-    "http://plantomics.mind.meiji.ac.jp/podc/data/nicotiana_tabacum_sample.xls",
+    #"http://plantomics.mind.meiji.ac.jp/podc/data/nicotiana_tabacum_sample.xls",
     "http://plantomics.mind.meiji.ac.jp/podc/data/zea_mays_sample.xls"    
     )
 

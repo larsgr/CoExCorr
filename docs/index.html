@@ -212,27 +212,29 @@ $(document).ready(function () {
 <p>This study explores a method for indirectly comparing gene expression data from different species by correlating the co-expression of orthologous genes.</p>
 <p>The final output of the algorithm is a measure of expression similarity between any two genes in two different species. These are the steps:</p>
 <ul>
-<li>MI: Calculate mutual information (MI) co-expression matrix for each species.</li>
-<li>CLR: “Normalize” the co-expression using the CLR algorithm.</li>
+<li>PCC: Calculate pearson correlation coefficient co-expression matrix for each species.</li>
+<li>MR: “Normalize” the co-expression using the Mutual Rank algorithm.</li>
 <li>Coexpression Correlation Score (CCS): Compare co-expression matrices by calculating the pearson correlation coefficient (PCC) between co-expression matrices using a set of 1:1 orthologs as reference.</li>
+<li>Ortholog Rank Score (ORS): The normalised rank of the CCS for the ortholog pair among all other possible pairs</li>
 </ul>
 <p>In <a href="CompareMethods.html">Alternative methods</a> other methods are tested.</p>
 <div id="data-sources" class="section level3">
 <h3>Data sources</h3>
 <p>To test the algorithm we used public gene expression data from five different plants:</p>
 <ul>
-<li>Arabidopsis thaliana (At)</li>
-<li>Solanum lycopersicum (Sl)</li>
-<li>Glycine max (Gm)</li>
-<li>Oryza sativa (Os)</li>
-<li>Zea mays (Zm)</li>
+<li><em>Arabidopsis thaliana</em> (<em>At</em>)</li>
+<li><em>Solanum lycopersicum</em> (<em>Sl</em>)</li>
+<li><em>Glycine max</em> (<em>Gm</em>)</li>
+<li><em>Oryza sativa</em> (<em>Os</em>)</li>
+<li><em>Zea mays</em> (<em>Zm</em>)</li>
 </ul>
-<p>The species were chosen because of the amount of available expression data. All the data used has been downloaded from public databases, details on the <a href="downloads.html">data sources</a> page.</p>
+<p>The species were chosen because of the amount of available expression data. Details on how to download are on the <a href="downloads.html">data sources</a> page.</p>
 </div>
-<div id="ccs-performance-evaluation" class="section level3">
-<h3>CCS Performance evaluation</h3>
-<p>To evaluate the perfomance of the algorithm we calculate, for each ortholog pair, the rank of the CCS of the ortholog compared to the CCS of all non-orthologs of the gene. This rank is normalised to get a value between 0 and 1 (which we call the ortholog ranks score (ORS)) where 0 represents the highest CCS and 1 the lowest. The idea is that the orthologs should have a more similar expression pattern, i.e. higher CCS, than when comparing with a random gene. ORS can also be interpreted as one minus the P-value (i.e. ORS = 1-P), and is plotted as -log10(P).</p>
+<div id="method-performance-evaluation" class="section level3">
+<h3>Method performance evaluation</h3>
+<p>To evaluate the perfomance of the algorithm we calculate, for each ortholog pair, the rank of the CCS of the ortholog compared to the CCS of all non-orthologs of the gene. This rank is normalised to get a value between 0 and 1 (which we call the ortholog ranks score (ORS)) where 1 means that the ortholog has the highest CCS and and 0 the lowest. The idea is that the orthologs should have a more similar expression pattern, i.e. higher CCS, than when comparing with a random gene. ORS can also be interpreted as one minus the P-value (i.e. ORS = 1-P), and can be plotted as -log10(P).</p>
 <p>As the different species are expected to have differences in gene regulation, we also test the score within the same species by dividing the expression data in two subsets and compare them as if they were from different species. This way we test only the effect of the method and the effect of the sample choice. See <a href="WithinSpecies.html">within-species ranks</a>.</p>
+<p>We were also interrested in how much the number of samples affect the performance wich is explored in <a href="nSamples.html">Number of samples</a></p>
 </div>
 <div id="gene-regulation-divergence-of-duplicated-genes" class="section level3">
 <h3>Gene regulation divergence of duplicated genes</h3>

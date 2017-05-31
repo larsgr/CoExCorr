@@ -26,8 +26,8 @@ investigate the expression similarity of duplicated genes
 ```{r loadRankOrthoTables}
 
 orthoRankTables <-
-  dir("data/ranks", pattern="...._orthoRanks.RDS",full.names=T)  %>%
-  set_names(sub(".*/(....)_orthoRanks.RDS","\\1", .)) %>% 
+  dir("data/ranksMR", pattern="...._ranks.RDS",full.names=T)  %>%
+  set_names(sub(".*/(....)_ranks.RDS","\\1", .)) %>% 
   map(readRDS) %>% 
   map( function( orthoTable ){
     # anonymize the spc1 and spc2 columns in the table
@@ -106,6 +106,8 @@ reverselog_trans <- function(base = exp(1)) {
 }
 
 # take only the 1:1-4 and plot in a single figure
+
+
 x %>% 
   # Swap the order of spc so that the spc with a single ortholog comes first (e.g. AtOs 1:2 = At1:Os2, OsAt 1:2 = Os1:At2)
   mutate( spcPair=ifelse(N2<N1,sub("(..)(..)","\\2\\1",spcPair), spcPair) ) %>%
@@ -116,15 +118,14 @@ x %>%
   filter( (N1==1 & N2<5) | (N2==1 & N1<5) ) %>%
   mutate( orthoDupLevel = paste0("1:",pmax(N1,N2))) %>%
   ggplot() +
-  # geom_line( aes(x=pmax(N1,N2),y=medPval,color=spcPair,linetype=rnkT) ) +
-  geom_point( aes(x=as.factor(paste0("1:",pmax(N1,N2))),y=medPval) ) +
+  # geom_line( aes(x=pmax(N1,N2),y=medPval,color=spcPair,linetype=rnkT, group=interaction(spcPair,rnkT)) ) +
+  geom_point( aes(x=pmax(N1,N2),y=medPval) ) +
   theme_bw() +
   ylab("Median P-value") +
   xlab("Ortholog count") +
+  scale_x_continuous(breaks=1:4,labels=paste0("1:",1:4)) +
   scale_y_continuous(breaks=c(1,0.5,0.1,0.05,0.01),trans=reverselog_trans(10)) 
   
-  #scale_x_continuous(breaks=1:4, labels=paste0("1:",1:4)) -> g
-
 # ggplotly(g)
 
 ```
