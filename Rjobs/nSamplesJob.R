@@ -3,15 +3,16 @@ myLog <- function(...){
 }
 
 
-# Generate random subsets and prepare Os clr big.matrix and At expression 
+
+
+# Generate random subsets and prepare Os MR big.matrix and At expression 
 # big.matrix for quick retrieval by subsequent steps
 nSamplesInit <- function(outdir = "data/subsets/nSamples", nStudyReps=10, nSampleReps=5){
   source("R/orthoUtils.R")
+  source("R/calcMR.R")
   library(bigmemory)
   library(dplyr)
-  library(BSplineMI)
-  source("R/CLR.R")
-  
+
   # create output directory
   dir.create(outdir)
   
@@ -35,14 +36,14 @@ nSamplesInit <- function(outdir = "data/subsets/nSamples", nStudyReps=10, nSampl
                           backingfile = "xAt.bm", 
                           descriptorfile = "xAt.bm.desc")
   
-  # calc Os CLR and save as big.matrix
-  cat("calculating MI+CLR for Os...\n")
-  clrOs <- calcCLR(calcSplineMI(xOs,nBins = 7,splineOrder = 3))
+  # calc Os PCC+MR and save as big.matrix
+  cat("calculating PCC+MR for Os...\n")
+  mrOs <- calcLogMR(WGCNA::cor(t(xOs)))
   
-  cat("Writing clr matrix to file.\n")
-  clrOs.bm <- as.big.matrix(clrOs, backingpath = outdir, 
-                            backingfile = "clrOs.bm", 
-                            descriptorfile = "clrOs.bm.desc")
+  cat("Writing MR matrix to file.\n")
+  mrOs.bm <- as.big.matrix(mrOs, backingpath = outdir, 
+                            backingfile = "mrOs.bm", 
+                            descriptorfile = "mrOs.bm.desc")
   
   
   # load sample metadata
@@ -77,29 +78,43 @@ nSamplesJob <- function(n = 100,
                         subsetIdx = 1, 
                         subsetFile = "data/subsets/nSamples/rndStudies.RDS", 
                         outfile = "data/subsets/nSamples/rnks_rndStudies_1_100.RDS", 
-                        clrOs.bm.desc = "data/subsets/nSamples/clrOs.bm.desc", 
-                        xAt.bm.desc = "data/subsets/nSamples/xAt.bm.desc",
-                        threads = 4){
+                        mrOs.bm.desc = "data/subsets/nSamples/mrOs.bm.desc", 
+                        xAt.bm.desc = "data/subsets/nSamples/xAt.bm.desc"){
   library(bigmemory)
-  library(BSplineMI)
-  source("R/CLR.R")
-  source("R/mc_cor.R")
+  source("R/calcMR.R")
   source("R/calcRanks.R")
 
   
-  myLog("calculating MI+CLR for first",n,"At samples of subset",subsetIdx,"in",subsetFile,"...\n")
+  myLog("calculating PCC+MR for first",n,"At samples of subset",subsetIdx,"in",subsetFile,"...\n")
   
   # attach At expression data
   xAt.bm <- attach.big.matrix(xAt.bm.desc)
 
   sampleIDs <- readRDS(subsetFile)[[subsetIdx]][1:n]
   
-  clrAt <- calcCLR(calcSplineMI(xAt.bm[ ,sampleIDs],nBins = 7,splineOrder = 3,threads=threads))
+  # extract subset
+  xAtSubset <- xAt.bm[ ,sampleIDs]
   
+  # find genes with no variance
+  noVar <- apply(xAtSubset,1,max)==apply(xAtSubset,1,min) # max=min -> no variance!
+  
+  myLog("Number of genes with no variance:",sum(noVar),"\n")
+
+  # calculate PCC+MR (filter noVar genes)
+  mrAt <- calcLogMR(WGCNA::cor(t(xAtSubset[!noVar, ])))
+
   myLog("calculating CCS...\n")
 
-  clrOs.bm <- attach.big.matrix(clrOs.bm.desc)
-  CCS <- mc_cor2(clrAt,clrOs.bm,cores = threads)
+  # attach Os MR matrix
+  mrOs.bm <- attach.big.matrix(mrOs.bm.desc)
+  
+  # extract submatrix without the noVar genes
+  mrOs <- mrOs.bm[!noVar,!noVar]
+  
+  # calc CCS
+  CCS <- calcCCS(mr1 = mrAt, mr2 = mrOs,
+                 refOrthos1 = rownames(mrAt),
+                 refOrthos2 = rownames(mrOs))
   
   myLog("calculating ranks...\n")
   
