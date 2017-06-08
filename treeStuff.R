@@ -70,7 +70,7 @@ ggplotlyHeatmap <- function(mData){
   p <-
     ggplot(melt(mData),aes(x = Var2, y = Var1, fill = value)) +
     geom_tile() +
-    scale_fill_gradientn(colours = myPalette(100)) +
+    scale_fill_gradientn(colours = myPalette(100),limits=c(0, 4)) +
     coord_equal() +
     theme_bw()
   
@@ -132,39 +132,85 @@ fixTreeData <- function(td){
   return(td)
 }
 
-orthoPairRnks <- function(geneIDs, ccs){
-  
-  # get all combinations of ortholog pairs
-  allOrthoPairs <- 
-    expand.grid(rowGenes=geneIDs[geneIDs %in% rownames(ccs)],
-                colGenes=geneIDs[geneIDs %in% colnames(ccs)],
-                stringsAsFactors = F)
-  
-  # get ranks for each pair  
-  allOrthoPairs$rnks <- quickRanks(ccs,allOrthoPairs$rowGenes,allOrthoPairs$colGenes)
-  
-  # spread out like a matrix
-  rankTbl <-
-    as_tibble(allOrthoPairs) %>%
-    spread(key = colGenes,value = rnks)
-  rankMat <- as.matrix(rankTbl[,-1])
-  rownames(rankMat) <- rankTbl$rowGenes
-  
-  return(rankMat)
-}
 
+# orthoPairRnks <- function(geneIDs, ccs){
+#   
+#   # get all combinations of ortholog pairs
+#   allOrthoPairs <- 
+#     expand.grid(rowGenes=geneIDs[geneIDs %in% rownames(ccs)],
+#                 colGenes=geneIDs[geneIDs %in% colnames(ccs)],
+#                 stringsAsFactors = F)
+#   
+#   # get ranks for each pair  
+#   allOrthoPairs$rnks <- quickRanks(ccs,allOrthoPairs$rowGenes,allOrthoPairs$colGenes)
+#   
+#   # spread out like a matrix
+#   rankTbl <-
+#     as_tibble(allOrthoPairs) %>%
+#     spread(key = colGenes,value = rnks)
+#   rankMat <- as.matrix(rankTbl[,-1])
+#   rownames(rankMat) <- rankTbl$rowGenes
+#   
+#   return(rankMat)
+# }
+
+# getRankMat <- function(p4d){
+#   geneIDs <- tipLabels(p4d) # !! order of the tips in the plot doesnt match
+#   
+#   M <- matrix(NA_real_,ncol=nTips(p4d),nrow=nTips(p4d),dimnames=list(geneIDs,geneIDs))
+#   
+#   for(ccs in CCS){
+#     m <- orthoPairRnks(geneIDs, ccs)
+#     M[rownames(m),colnames(m)] <- m
+#     M[colnames(m),rownames(m)] <- t(m)
+#   }
+#   return(M)
+# }
+
+# get ranks from precalculated rank tables
 getRankMat <- function(p4d){
   geneIDs <- tipLabels(p4d) # !! order of the tips in the plot doesnt match
   
   M <- matrix(NA_real_,ncol=nTips(p4d),nrow=nTips(p4d),dimnames=list(geneIDs,geneIDs))
   
-  for(ccs in CCS){
-    m <- orthoPairRnks(geneIDs, ccs)
-    M[rownames(m),colnames(m)] <- m
-    M[colnames(m),rownames(m)] <- t(m)
+  for(rnkTbl in orthoRankTables){
+    rowGenes <- geneIDs[geneIDs %in% rnkTbl$SPC1]
+    colGenes <- geneIDs[geneIDs %in% rnkTbl$SPC2]
+    
+    if( length(rowGenes)>0 & length(colGenes)>0){
+      M[rowGenes,colGenes] <- sapply(colGenes,function(spc2gene){
+        rnkTblTmp <- rnkTbl[rnkTbl$SPC2 %in% spc2gene,]
+        rnkTblTmp$rnks[match(rowGenes,rnkTblTmp$SPC1)]
+      })
+      M[colGenes,rowGenes] <- sapply(rowGenes,function(spc1gene){
+        rnkTblTmp <- rnkTbl[rnkTbl$SPC1 %in% spc1gene,]
+        rnkTblTmp$rnksT[match(colGenes,rnkTblTmp$SPC2)]
+      })
+    }
   }
   return(M)
 }
+
+orthoPairRnks <- function(geneIDs, rnkTbl, transposed=F){
+  
+  # make matrix for ranks
+  rowGenes <- geneIDs[geneIDs %in% rnkTbl$SPC1]
+  colGenes <- geneIDs[geneIDs %in% rnkTbl$SPC2]
+  
+  sapply(colGenes,function(spc2gene){
+    rnkTblTmp <- rnkTbl[rnkTbl$SPC2 %in% spc2gene,]
+    if(transposed){
+      rnkTblTmp$rnksT[match(rowGenes,rnkTblTmp$SPC1)]
+    } else {
+      rnkTblTmp$rnks[match(rowGenes,rnkTblTmp$SPC1)]
+    }
+  }) -> rankMat
+  colnames(rankMat) <- colGenes
+  rownames(rankMat) <- rowGenes
+  
+  return(rankMat)
+}
+
 
 getCCSMat <- function(p4d){
   geneIDs <- tipLabels(p4d) # !! order of the tips in the plot doesnt match
@@ -332,6 +378,21 @@ markDupNodes(p4d)
 
 ## Extract rank matrix ####
 #
+
+
+# load ranks
+orthoRankTables <-
+  dir("data/ranksMR", pattern="...._ranks.RDS",full.names=T)  %>%
+  set_names(sub(".*/(....)_ranks.RDS","\\1", .)) %>% 
+  map(readRDS) %>% 
+  map( function( orthoTable ){
+    # anonymize the spc1 and spc2 columns in the table
+    names(orthoTable)[1:2] <- c("SPC1", "SPC2")
+    
+    return(orthoTable)
+  })
+
+
 
 rnksMat <- getRankMat(p4d)
 
