@@ -4,7 +4,7 @@ output: html_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = FALSE)
 ```
 
 ```{r loadPackages, include=FALSE}
@@ -59,8 +59,7 @@ When comparing within species there are no orthologs and any gene can be used as
 The plot below shows the distribution of the resulting ranks for all within-species subsets (10reps x 4reforthos x 2dir x 4000genes) together with the ranks from the between species tests. Median is marked with diamond. Ranks are shown in -log10(P) scale (i.e. a value >1 corresponds P<0.1 and a value >2 corresponds P<0.01 etc.). As expected the within-species ranks are higher than between species.
 
 
-```{r fullRankscompare, fig.height=4, fig.width=9, dev='svg', echo=F}
-
+```{r loadRanks}
 #
 # load within species ranks
 #
@@ -73,12 +72,19 @@ withinRnks <-
           repNr = sub(".*/../rnks_([0-9]+).RDS","\\1",filename),
           rnks = map(filename, readRDS))
 
+# flatten the nested list
+withinRnksUnnested <- 
+  withinRnks %>%
+  mutate(spc1=spc, spc2=spc, typ="Within species",
+         spc=NULL, filename=NULL) %>% 
+  mutate(rnks = map(rnks,unlist)) %>% 
+  unnest()
 
 # load Full CCS ranks (including 1:N and N:N)
 fullRnks <-
-  data_frame( filename=dir("data/ranks",pattern="...._orthoRanks.RDS",full.names = T)) %>% 
-  mutate(spc1 = sub(".*/(..)(..)_orthoRanks.RDS","\\1",filename),
-         spc2 = sub(".*/(..)(..)_orthoRanks.RDS","\\2",filename),
+  data_frame( filename=dir("data/ranksMR",pattern="...._ranks.RDS",full.names = T)) %>% 
+  mutate(spc1 = sub(".*/(..)(..)_ranks.RDS","\\1",filename),
+         spc2 = sub(".*/(..)(..)_ranks.RDS","\\2",filename),
          rnks = map(filename,readRDS),
          filename = NULL)
 
@@ -87,7 +93,8 @@ fullRnksT <-
   fullRnks %>% 
   # filter 1:1 and select rnksT as rnks
   mutate( rnks = map(rnks, ~ .x %>% filter(otype=="1:1") %>% transmute(rnks = rnksT)) ) %>% 
-  mutate( spc1_=spc1, spc1=spc2, spc2=spc1_, spc1_=NULL) # swap spc1 and spc2
+  mutate( spc1_=spc1, spc1=spc2, spc2=spc1_) %>% # swap spc1 and spc2
+  select(-spc1_) # remove temporary column
 
 fullRnks <- 
   fullRnks %>% 
@@ -95,15 +102,10 @@ fullRnks <-
   mutate( rnks = map(rnks, ~ .x %>% filter(otype=="1:1") %>% transmute(rnks = rnks)) ) %>% 
   bind_rows(fullRnksT) # combine with Transposed ranks
 
+```
 
-# flatten the nested list
-withinRnksUnnested <- 
-  withinRnks %>%
-  mutate(spc1=spc, spc2=spc, typ="Within species",
-         spc=NULL, filename=NULL) %>% 
-  mutate(rnks = map(rnks,unlist)) %>% 
-  unnest()
-  
+
+```{r fullRankscompare, fig.height=4, fig.width=9, dev='svg', echo=F}
 fullRnks %>% 
   unnest() %>% 
   mutate( typ="Between species" ) %>% 
@@ -118,6 +120,45 @@ fullRnks %>%
 
 ```
 
+
+```{r calcMedRnkMat}
+
+spcs <- unique(fullRnks$spc1)
+medRnkMat <- sapply(spcs,function(spc1){
+  sapply(spcs,function(spc2){
+    if(spc1==spc2){
+      # for each replicate
+      mean( sapply(withinRnks$rnks[withinRnks$spc==spc1],function(x){
+        # for each ref spc
+        sapply(x,function(y){
+          # median of mean of direction
+          median(y[[1]]+y[[2]])/2
+        })
+      }))
+    } else {
+      idx1 <- which(fullRnks$spc1==spc1 & fullRnks$spc2==spc2)
+      idx2 <- which(fullRnks$spc1==spc2 & fullRnks$spc2==spc1)
+      median(fullRnks$rnks[[idx1]]$rnks+fullRnks$rnks[[idx2]]$rnks,na.rm = T)/2
+    }
+  })
+})
+
+logMedRnkMat <- -log10(1.0001-medRnkMat)
+range(logMedRnkMat)
+normMedRnkMat <- logMedRnkMat/sqrt(diag(logMedRnkMat)) %o% sqrt(diag(logMedRnkMat))
+```
+
+```{r}
+myPalette <- colorRampPalette(rev(RColorBrewer::brewer.pal(11, "Spectral")), space="Lab")
+
+logMedRnkMat[c("At","Sl","Gm","Os","Zm"),c("At","Sl","Gm","Os","Zm")] %>% 
+  reshape2::melt() %>% 
+  ggplot(aes(x = Var2, y = Var1, fill = value)) +
+  geom_tile() +
+  scale_fill_gradientn(colours = myPalette(100),limits=c(0, 3)) +
+  coord_equal() +
+  theme_bw()
+```
 
 ## compare randomized subsets
 
