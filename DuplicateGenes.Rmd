@@ -97,38 +97,55 @@ x %>%
 The main observation is that 1:1 orthologs clearly tend to have higher ranks than orthologs with any number of duplicates and that the ranks get lower when the number of orthologs increases. (Note that there is increased uncertainty in the median of the larger groups as they are more rare). An interresting pattern is that orthologs with either one or two copies in Gm seem to have the approximately same ranks. A possible explanation could be the recent duplication in Gm and that a high portion of the genes that prefer occurr in single copies haven't had time to lose its copy.
 
 ```{r OrthoRankTrend}
-reverselog_trans <- function(base = exp(1)) {
-    trans <- function(x) -log(x, base)
-    inv <- function(x) base^(-x)
-    trans_new(paste0("reverselog-", format(base)), trans, inv, 
-              log_breaks(base = base), 
-              domain = c(1e-100, Inf))
-}
+medLogMeanRnks <- 
+  # add grpSize to orthoRankTables and concatenate into one table
+  map2_df(grpSize, orthoRankTables, .id="spcPair",
+        ~ .x %>% 
+          unnest(SPC1) %>% 
+          inner_join(.y, by = "SPC1")) %>% 
+  # remove NA's and keep only 1:N and N:1 orthologs where N=1..4
+  filter( !is.na(rnks), (N1==1 & N2<5) | (N2==1 & N1<5)) %>% 
+  # calculate mean of both directions
+  mutate( meanRnk = (rnks+rnksT)/2 ) %>% 
+  # calculate median of ranks
+  group_by(spcPair,N1,N2) %>% 
+  summarise( medRnk = median(-log10(1.0001-meanRnk))) %>% 
+  ungroup %>% 
+  # Swap the order of spc so that the spc with a single ortholog comes first
+  mutate( spcPair=ifelse(N2<N1,sub("(..)(..)","\\2\\1",spcPair), spcPair))
 
-# take only the 1:1-4 and plot in a single figure
 
 
-x %>% 
-  # Swap the order of spc so that the spc with a single ortholog comes first (e.g. AtOs 1:2 = At1:Os2, OsAt 1:2 = Os1:At2)
-  mutate( spcPair=ifelse(N2<N1,sub("(..)(..)","\\2\\1",spcPair), spcPair) ) %>%
-  mutate( Pval = 1.0001-rnk ) %>% 
-  group_by(spcPair,N1,N2,rnkT) %>% 
-  summarise( medPval = median(Pval)) %>% 
-  # summarise( medRnk = median(logRnk)) %>% 
-  filter( (N1==1 & N2<5) | (N2==1 & N1<5) ) %>%
-  mutate( orthoDupLevel = paste0("1:",pmax(N1,N2))) %>%
-  ggplot() +
-  # geom_line( aes(x=pmax(N1,N2),y=medPval,color=spcPair,linetype=rnkT, group=interaction(spcPair,rnkT)) ) +
-  geom_point( aes(x=pmax(N1,N2),y=medPval) ) +
+medLogMeanRnks %>% 
+  # add copy of 1:1 orthologs and swap spc order
+  bind_rows(
+    medLogMeanRnks %>% 
+      filter(N1==1 & N2==1) %>% 
+      mutate( spcPair=sub("(..)(..)","\\2\\1",spcPair))
+  ) %>% 
+  # mutate( spcPair2 = ifelse(grepl("..[GZ]m",spcPair),"dup","other")) %>% 
+  mutate( spcPair2 = factor(ifelse(grepl("..[GZ]m",spcPair),spcPair,"other"),
+                            levels=c("AtGm","AtZm","OsGm","OsZm","SlGm","SlZm","ZmGm","GmZm","other"))) %>%
+  arrange( spcPair2=="other", substr(spcPair2,3,4),substr(spcPair2,1,2)) %>% 
+  ggplot( aes(x=pmax(N1,N2),y=medRnk,color=spcPair2) ) +
+  geom_line( aes(group=spcPair,linetype=spcPair2) ) +
+  geom_point() +
   theme_bw() +
-  ylab("Median P-value") +
+  ylab("Median logORS") +
   xlab("Ortholog count") +
   scale_x_continuous(breaks=1:4,labels=paste0("1:",1:4)) +
-  scale_y_continuous(breaks=c(1,0.5,0.1,0.05,0.01),trans=reverselog_trans(10)) 
-  
-# ggplotly(g)
+  scale_color_manual( name="Species compared",
+                      values=c(AtGm="#A6CEE3", AtZm="#1F78B4",
+                               SlGm="#B2DF8A", SlZm="#33A02C",
+                               OsGm="#FB9A99", OsZm="#E31A1C",
+                               ZmGm="#FDBF6F", GmZm="#6A3D9A", other="grey")) +
+  scale_linetype_manual( name="Species compared",
+                         values = c(AtGm=1, AtZm=1, SlGm=1, SlZm=1,
+                                    OsGm=1, OsZm=1, ZmGm=1, GmZm=1, other=2))
 
+  
 ```
+
 
 ## 1:2 orthologs
 
