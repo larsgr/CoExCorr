@@ -8,10 +8,10 @@ calcLogMR <- function(pcc){
   
   nGenes <- nrow(pcc)
   
-  return( log2(nGenes) - 0.5*(rankMat+t(rankMat)) )
+  return( 1-(rankMat+t(rankMat))/(2*log2(nGenes)) )
   
-  # note: adding log2(nGenes) and multiplying with -0.5 has no effect on CCS
-  # it simply changes the scale to something similar to CLR
+  # note: subtracting from 1 and dividing by 2*log2(nGenes) has no effect on CCS
+  # it simply changes the scale to between 0 and 1
 }
 
 # calculate CCS with removal the self co-expression in the MR matrix
