@@ -18,7 +18,7 @@ Illustrate how the number of samples affect the ortholog rank score (ORS).
 
 ### Method
 
-To test the effect of the number of samples we picked subsets of various sizes out of the 1363 _At_ samples available and calculated ORS (PCC+MI) against the full set of _Os_ samples (454 samples). Only 1:1 orthologs were included (~5k genes) to save computation time.
+To test the effect of the number of samples we picked subsets of various sizes out of the 1363 _At_ samples available and calculated ORS (PCC+MR) against the full set of _Os_ samples (454 samples). Only 1:1 orthologs were included (~5k genes) to save computation time.
 
 Samples were permuted in two different ways, either by shuffling the order of the individual samples or by shuffling the order of the studies (i.e. keeping samples from the same experiment together). This was repeated 10 times for the studies and 5 times for individual sample permutations. Using the permuted sample order, the first 12,25,50,100,200,400 and 800 samples were used to calculate ORS.
 
