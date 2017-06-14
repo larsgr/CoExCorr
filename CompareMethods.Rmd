@@ -62,6 +62,12 @@ sumRnks <-
           meanRnks = map_dbl(rnks, mean, na.rm=T),
           rnks = NULL)
 
+# calc mean of ranks for each direction before getteing the median per spcPar
+medRnksMeanDir <- 
+  rnks %>% 
+  spread(key=dir,value=rnks) %>% 
+  mutate( medRnks = map2_dbl(.x = rnk, .y = rnkT, ~ median((.x+.y)/2, na.rm=T)),
+          rnk = NULL, rnkT= NULL)
 
 
 ```
@@ -155,6 +161,33 @@ sumRnks %>%
 ```
 
 It looks like PCC+MR is the best method in general.
+
+
+Here's a summary plot for the article. Ranks for each direction was averaged so before calculating the median. For each species pair the median ORS for PCC+MR was subtracted for easier comparison.
+
+```{r plotMedianRanksSummary}
+medRnksMeanDir %>%
+  # remove non-PCC TOM
+  filter( !(clrMethod=="TOM" & mtype != "PCC")) %>% 
+  # combine mtype and clrMethod
+  mutate( coexMethod = paste0(mtype,"+",clrMethod),
+          coexMethod = sub(".none","",coexMethod),
+          coexMethod = factor(coexMethod,ordered = T, levels= c("PCC+MR","SCC+MR","MI+MR",
+                                                                "PCC+CLR","SCC+CLR","MI+CLR",
+                                                                "PCC","SCC","MI","PCC+TOM"))) %>% 
+  # subtract PCC+MR
+  group_by( spcPair ) %>% 
+  mutate( medRnks = medRnks-medRnks[coexMethod=="PCC+MR"]) %>% 
+  # plot
+  ggplot(aes(y=medRnks,x=coexMethod, color=spcPair,group=spcPair)) +
+  scale_colour_brewer(palette = "Paired",name="Species pair") +
+  geom_point(size=2) +
+  geom_line() +
+  theme_bw() +
+  ylab("median ORS relative to PCC+MR") +
+  xlab("Correlation method")
+```
+
 
 Notice that the results are less clear when _Gm_ is one of the included species (see figure below). It seems like MI results in a large gap between the ORS depending on the direction, which is reversed and less pronounced with PCC. Hard to say why this is so, but one factor could be that few genes were included in the analysis as _Gm_'s recent duplication results in few 1:1 orthologs. 
 
