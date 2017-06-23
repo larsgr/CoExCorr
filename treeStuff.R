@@ -1,6 +1,3 @@
-source("R/phyloXML.R")
-source("R/getGeneNames.R")
-source("R/calcRanks.R")
 library(tidyverse)
 library(ape)
 library(ggplot2)
@@ -8,7 +5,9 @@ library(reshape2)
 library(RColorBrewer)
 library(plotly)
 
-
+source("R/phyloXML.R")
+source("R/getGeneNames.R")
+source("R/calcRanks.R")
 
 ### Load tree and taxonomy data ########
 #
@@ -70,7 +69,7 @@ ggplotlyHeatmap <- function(mData){
   p <-
     ggplot(melt(mData),aes(x = Var2, y = Var1, fill = value)) +
     geom_tile() +
-    scale_fill_gradientn(colours = myPalette(100),limits=c(0, 4)) +
+    scale_fill_gradientn(colours = myPalette(100),limits=c(0, 4.01)) +
     coord_equal() +
     theme_bw()
   
@@ -360,6 +359,14 @@ treesWithSeveral11 <-
 treeID <- geneID2treeID$At["AT1G63030"]
 
 
+# SEP1
+treeID <- geneID2treeID$At["AT5G15800"]
+
+
+# AP3
+treeID <- geneID2treeID$At["AT3G54340"]
+
+
 # select tree of interrest
 treeID <- sample(treesWithSeveral11,1)
 length(treeData[[treeID]]$tip.label)
@@ -396,7 +403,10 @@ orthoRankTables <-
 
 rnksMat <- getRankMat(p4d)
 
-rnksMatLog <- -log10(1.001-rnksMat)
+# mean of directional rank:
+rnksMat <- 0.5*(rnksMat + t(rnksMat))
+
+rnksMatLog <- -log10(1.0001-rnksMat)
 
 
 # and CCS matrix
