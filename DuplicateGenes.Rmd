@@ -11,7 +11,8 @@ knitr::opts_chunk$set(echo = FALSE, dev = 'svg')
 library(tidyverse)
 library(ggplot2)
 library(plotly)
-library("scales")
+# library("scales")
+library(ggpmisc) # stat_poly_eq
 
 # source("R/calcRanks.R")
 source("R/orthoUtils.R")
@@ -36,6 +37,19 @@ orthoRankTables <-
     return(orthoTable)
   })
 
+
+# # ORS based on MI+CLR:
+# orthoRankTables <-
+#   dir("data/ranks", pattern="...._orthoRanks.RDS",full.names=T)  %>%
+#   set_names(sub(".*/(....)_orthoRanks.RDS","\\1", .)) %>% 
+#   map(readRDS) %>% 
+#   map( function( orthoTable ){
+#     # anonymize the spc1 and spc2 columns in the table
+#     names(orthoTable)[1:2] <- c("SPC1", "SPC2")
+#     
+#     return(orthoTable)
+#   })
+
 # calculate size of groups
 grpSize <-
   lapply(orthoRankTables, function( orthoTable ){
@@ -46,6 +60,20 @@ grpSize <-
   })
 
 
+# combine group size and rank tables and calculate logORS
+ORS <- 
+  # add grpSize to orthoRankTables and concatenate into one table
+  map2_df(grpSize, orthoRankTables, .id="spcPair",
+        ~ .x %>% 
+          unnest(SPC1) %>% 
+          inner_join(.y, by = "SPC1")) %>% 
+  # calculate mean of directional ranks 
+  mutate( ORS=(rnks+rnksT)/2) %>% 
+  # remove NA's and remove orthologs with more then 5 duplicates
+  filter( !is.na(ORS), N1 < 6, N2 < 6) %>% 
+  # log transform ranks
+  mutate( logORS = -log10(1.0001-ORS) ) 
+
 ```
 
 ## Rank distribution and ortholog duplication level
@@ -54,22 +82,11 @@ The following plots show the distribution of ranks (i.e. -log10( Pval ) ) for ea
 
 
 ```{r plotOrthoRanks, fig.height=9,fig.width=15}
-x <- 
-  # add grpSize to orthoRankTables and concatenate into one table
-  map2_df(grpSize, orthoRankTables, .id="spcPair",
-        ~ .x %>% 
-          unnest(SPC1) %>% 
-          inner_join(.y, by = "SPC1")) %>% 
-  # gather rnksT and rnks to one column
-  gather( rnks, rnksT, key="rnkT", value="rnk") %>% 
-  # remove NA's
-  filter( !is.na(rnk), N1 < 6, N2 < 6) %>% 
-  # log transform ranks
-  mutate( logRnk = -log10(1.0001-rnk) ) 
 
-x %>%  
+
+ORS %>%  
   mutate( N1=as.factor(N1), N2=as.factor(N2)) %>% 
-  ggplot( aes( x=N1, y=logRnk) ) +
+  ggplot( aes( x=N1, y=logORS) ) +
   facet_grid(N2 ~ as.factor(spcPair)) +
   geom_violin() +
   stat_summary(fun.y=median, geom="point", size=2, shape=20)
@@ -78,12 +95,12 @@ x %>%
 The following heatmap of median ranks which may give a better overview:
 
 ```{r orthoMedRnkHeatmap}
-x %>% 
+ORS %>% 
   mutate( N1=as.factor(N1), N2=as.factor(N2)) %>% 
   group_by(spcPair,N1,N2) %>% 
-  summarise( medRnk = median(logRnk)) %>% 
+  summarise( medLogORS = median(logORS)) %>% 
   ggplot() +
-  geom_tile( aes(x=N1,y=N2,fill=medRnk) ) +
+  geom_tile( aes(x=N1,y=N2,fill=medLogORS) ) +
   facet_wrap( ~ as.factor(spcPair), nrow=2 ) +
   scale_fill_gradientn( colors = RColorBrewer::brewer.pal(5,"Spectral"),
                        values = scales::rescale(4:0),
@@ -94,40 +111,32 @@ x %>%
 
 ```
 
-The main observation is that 1:1 orthologs clearly tend to have higher ranks than orthologs with any number of duplicates and that the ranks get lower when the number of orthologs increases. (Note that there is increased uncertainty in the median of the larger groups as they are more rare). An interresting pattern is that orthologs with either one or two copies in Gm seem to have the approximately same ranks. A possible explanation could be the recent duplication in Gm and that a high portion of the genes that prefer occurr in single copies haven't had time to lose its copy.
+The main observation is that 1:1 orthologs clearly tend to have higher ranks than orthologs with any number of duplicates and that the ranks get lower when the number of orthologs increases. (Note that there is increased uncertainty in the median of the larger groups as they are more rare). An interresting pattern is that orthologs with either one or two copies in _Gm_ seem to have the approximately same ORS. A possible explanation could be the recent duplication in _Gm_ and that a high portion of the genes that would normally occurr in single copies haven't had time to lose its copy. The plot below shows the the median logORS for 1:1-4 orthologs for all possible species combinations where the colored lines highlight those with duplications in _Gm_ or _Zm_, both of which have a experinced a recent WGD. From this plot it is clear that duplicates in _Gm_ tend to have about the same or even higher ORS than 1:1 orthologs. Duplicates in _Zm_ have lower ORS than 1:1 orthologs but the difference seem to not be as large as for the other species pairs.
 
 ```{r OrthoRankTrend}
-medLogMeanRnks <- 
-  # add grpSize to orthoRankTables and concatenate into one table
-  map2_df(grpSize, orthoRankTables, .id="spcPair",
-        ~ .x %>% 
-          unnest(SPC1) %>% 
-          inner_join(.y, by = "SPC1")) %>% 
-  # remove NA's and keep only 1:N and N:1 orthologs where N=1..4
-  filter( !is.na(rnks), (N1==1 & N2<5) | (N2==1 & N1<5)) %>% 
-  # calculate mean of both directions
-  mutate( meanRnk = (rnks+rnksT)/2 ) %>% 
+medORS <- 
+  ORS %>% 
+  # keep only 1:N and N:1 orthologs where N=1..4
+  filter( (N1==1 & N2<5) | (N2==1 & N1<5)) %>% 
   # calculate median of ranks
   group_by(spcPair,N1,N2) %>% 
-  summarise( medRnk = median(-log10(1.0001-meanRnk))) %>% 
+  summarise( medLogORS = median(logORS)) %>% 
   ungroup %>% 
   # Swap the order of spc so that the spc with a single ortholog comes first
   mutate( spcPair=ifelse(N2<N1,sub("(..)(..)","\\2\\1",spcPair), spcPair))
 
-
-
-medLogMeanRnks %>% 
+medORS %>% 
   # add copy of 1:1 orthologs and swap spc order
   bind_rows(
-    medLogMeanRnks %>% 
+    medORS %>% 
       filter(N1==1 & N2==1) %>% 
       mutate( spcPair=sub("(..)(..)","\\2\\1",spcPair))
   ) %>% 
   # mutate( spcPair2 = ifelse(grepl("..[GZ]m",spcPair),"dup","other")) %>% 
   mutate( spcPair2 = factor(ifelse(grepl("..[GZ]m",spcPair),spcPair,"other"),
-                            levels=c("AtGm","AtZm","OsGm","OsZm","SlGm","SlZm","ZmGm","GmZm","other"))) %>%
+                            levels=c("AtGm","AtZm","OsGm","OsZm","SlGm","SlZm","ZmGm","GmZm","other") )) %>%
   arrange( spcPair2=="other", substr(spcPair2,3,4),substr(spcPair2,1,2)) %>% 
-  ggplot( aes(x=pmax(N1,N2),y=medRnk,color=spcPair2) ) +
+  ggplot( aes(x=pmax(N1,N2),y=medLogORS,color=spcPair2) ) +
   geom_line( aes(group=spcPair,linetype=spcPair2) ) +
   geom_point() +
   theme_bw() +
@@ -138,121 +147,380 @@ medLogMeanRnks %>%
                       values=c(AtGm="#A6CEE3", AtZm="#1F78B4",
                                SlGm="#B2DF8A", SlZm="#33A02C",
                                OsGm="#FB9A99", OsZm="#E31A1C",
-                               ZmGm="#FDBF6F", GmZm="#6A3D9A", other="grey")) +
+                               ZmGm="#FDBF6F", GmZm="#6A3D9A", other="grey"),
+                      labels=c("At1:GmX","At1:ZmX","Os1:GmX","Os1:ZmX","Sl1:GmX",
+                                 "Sl1:ZmX","Zm1:GmX","Gm1:ZmX","other")) +
   scale_linetype_manual( name="Species compared",
                          values = c(AtGm=1, AtZm=1, SlGm=1, SlZm=1,
-                                    OsGm=1, OsZm=1, ZmGm=1, GmZm=1, other=2))
+                                    OsGm=1, OsZm=1, ZmGm=1, GmZm=1, other=2),
+                      labels=c("At1:GmX","At1:ZmX","Os1:GmX","Os1:ZmX","Sl1:GmX",
+                                 "Sl1:ZmX","Zm1:GmX","Gm1:ZmX","other"))  
 
-  
+
+
 ```
 
 
 ## 1:2 orthologs
 
-If we look at 1:2 orthologs we can plot the score between the single ortholog and the two duplicate orthologs. The following plots show the -log10(P) transformed rank for each of the two alternative orthologs plotted against each other. If both of the duplicate genes have retained the same function we expect them to be similar, while if one of the duplicates have taken a different function (i.e. neo- or sub-functionalized) they may have diverged expressed patterns. Since the score for each of the duplicates also depends on whether the single ortholog has diverged it is however expected the scores correlated to a certain degree. There is one plot for each species-pair and the order of the species indicates which species that contain the duplicate, e.g. AtGm contains the At1:Gm2 orthologs.
+If we look at 1:2 orthologs we can plot the score between the single ortholog and the two duplicate orthologs. The following plots show the logORS for each of the two alternative orthologs plotted against each other. If both of the duplicate genes have retained the same function we expect them to be similar, while if one of the duplicates have taken a different function (i.e. neo- or sub-functionalized) they may have diverged expressed patterns. Since the score for each of the duplicates also depends on whether the single ortholog has diverged it is however expected the scores correlated to a certain degree. The duplicates in _Gm_ and _Zm_ tend to correlate more than the others, which is expected as they have had less time to diverge.
 
-```{r}
-library(ggpmisc) # stat_poly_eq
+```{r duplicateScatterPlot}
 
 # 1:2
-x %>%
-  filter( N1==1, N2==2, rnkT=="rnks") %>% 
-  # annotate spcPar e.g. "AtGm" becomes "At1:Gm2"
+ORS %>%
+  filter( N1==1 & N2==2) %>% 
+  # annotate spcPar e.g. "AtGm" becomes "At1:Gm2" or "At2:Gm1"
   mutate( spcPair = sub("(..)(..)","\\11:\\22",spcPair)) %>% 
-  # for each single ortholog (geneID in spc1)
-  group_by(SPC1,spcPair) %>%
+  # for each single ortholog geneID
+  mutate( singletonGene = ifelse(N1==1,SPC1,SPC2)) %>% 
+  group_by( singletonGene, spcPair ) %>%
   # separate the ranks for first and second (i.e. last) duplicate
-  summarise( rnk1=first(logRnk),rnk2=last(logRnk))  %>%
+  summarise( rnk1=first(logORS),rnk2=last(logORS))  %>%
   ggplot(aes(x=rnk1,y=rnk2)) +
-  ylab("-log10(P) of duplicate 2") +
-  xlab("-log10(P) of duplicate 1") +
+  ylab("logORS of duplicate 2") +
+  xlab("logORS of duplicate 1") +
   geom_point() +
   geom_density2d() +
   coord_equal() +
+  # add 
   stat_poly_eq( formula = x~y,
                 aes(label = ..rr.label..), fontface="bold",color="red",
                 parse = TRUE) +
-  facet_wrap( ~ as.factor(spcPair), nrow=3 )
+  facet_wrap( ~ as.factor(spcPair), nrow=2 )
 
 # 2:1
-x %>%
-  filter( N1==2, N2==1, rnkT=="rnksT") %>% 
-  mutate( spcPair = factor(sub("(..)(..)","\\21:\\12",spcPair),
-                           ordered = T,
-                           levels = sub("(..)(..)","\\21:\\12",unique(spcPair)))) %>% 
-  group_by(SPC2,spcPair) %>%
-  summarise( rnk1=first(logRnk),rnk2=last(logRnk)) %>% 
+ORS %>%
+  filter( N1==2 & N2==1) %>% 
+  # annotate spcPar e.g. "AtGm" becomes "At1:Gm2" or "At2:Gm1"
+  mutate( spcPair = sub("(..)(..)","\\12:\\21",spcPair)) %>% 
+  # for each single ortholog geneID
+  mutate( singletonGene = ifelse(N1==1,SPC1,SPC2)) %>% 
+  group_by( singletonGene, spcPair ) %>%
+  # separate the ranks for first and second (i.e. last) duplicate
+  summarise( rnk1=first(logORS),rnk2=last(logORS))  %>%
   ggplot(aes(x=rnk1,y=rnk2)) +
-  ylab("-log10(P) of duplicate 2") +
-  xlab("-log10(P) of duplicate 1") +
+  ylab("logORS of duplicate 2") +
+  xlab("logORS of duplicate 1") +
   geom_point() +
   geom_density2d() +
   coord_equal() +
+  # add 
   stat_poly_eq( formula = x~y,
                 aes(label = ..rr.label..), fontface="bold",color="red",
-                parse = TRUE) + 
-  facet_wrap( ~ spcPair, nrow=3 )
+                parse = TRUE) +
+  facet_wrap( ~ as.factor(spcPair), nrow=2 )
+
+
 
 
 ```
 
 ## At1:Gm2 
 
-The set of genes that have a 1:1 ortholog relationship between At and Os are more likely to be essential and therefore have a conserved expression pattern. Given the recent WGD in Gm there are many of these genes that have duplicate orthologs in Gm (i.e. At1:Gm2). The plots below compare the ranks distribution of two groups of At1:Gm2 orthologs, those that are At1:Os1 (singleton) and those that are not. The singletons are expected to be under selective pressure to retain the expression pattern.
+The set of genes that have a 1:1 ortholog relationship between _At_ and _Os_ are more likely to be essential and therefore have a conserved expression pattern. Given the recent WGD in Gm there are many of these genes that have duplicate orthologs in Gm (i.e. At1:Gm2). The plots below compare the ORS distribution of two groups of At1:Gm2 orthologs, those where the _At_ gene has 1:1 ortholog with _Os_ (i.e. At1:Os1 or singleton) and those that do not. 
 
-There seems to be a lower correlation between Gm duplicates among the singletons, perhaps an indication of a selective pressure to conserve only one of the duplicates (i.e. one duplicate is on the way to non-functionalizaition).
-
-However, there is a also significant difference in the mean ranks (see wilcoxon rank-sum test below) of the two duplicates in the two groups, i.e. the singleton group tend to have higher ranks in general. This might indicate that most of the expression divergence occured in the At lineage or before the WGD in the Gm lineage.
+If we look at the correlation between the ORS of the duplicates there is little difference between the two groups. In fact there is a slightly lower correlation in the singleton group (note: doing the same with _Zm_ results in higher correlation for the singleton group).
 
 
-```{r testGmDuplicateWithOsSingleton}
+```{r plotGmDuplicateWithOsSingleton}
 At1Os1 <-
-  filter(x, spcPair=="AtOs", N1==1, N2==1, rnkT=="rnksT")
+  filter(ORS, spcPair=="AtOs", N1==1, N2==1)
 
 At1Gm2 <-
-  filter(x, spcPair=="AtGm", N1==1, N2==2) %>% 
-  group_by(SPC1, rnkT) %>%
-  summarise( meanRnk=mean(logRnk), 
-             rnk1=first(logRnk),
-             rnk2=last(logRnk) ) %>% 
+  filter(ORS, spcPair=="AtGm", N1==1, N2==2) %>% 
+  group_by(SPC1) %>%
+  summarise( meanRnk=mean(logORS), 
+             rnk1=first(logORS),
+             rnk2=last(logORS) ) %>% 
   mutate( inAt1Os1 = SPC1 %in% At1Os1$SPC1) %>% 
   mutate( isAt1Os1 = as.factor(ifelse(inAt1Os1, "At:Os singleton","not At:Os singleton")) )
 
 
+
 At1Gm2 %>% 
-  mutate( ORSdir = as.factor(c(rnks="At -> Gm", rnksT="Gm -> At")[rnkT]) ) %>% 
+#  mutate( ORSdir = as.factor(c(rnks="At -> Gm", rnksT="Gm -> At")[rnkT]) ) %>% 
   ggplot(aes(x=rnk1,y=rnk2)) +
   ggtitle("At1:Gm2 orthologs sorted by singleton state in Os") +
-  ylab("-log10(P) of duplicate 2") +
-  xlab("-log10(P) of duplicate 1") +
+  ylab("logORS of duplicate 2") +
+  xlab("logORS of duplicate 1") +
   geom_point() +
   geom_density2d() +
   coord_equal() +
   stat_poly_eq( formula = x~y,
                 aes(label = ..rr.label..), fontface="bold",color="red",
                 parse = TRUE) +
-  facet_grid( ORSdir ~ isAt1Os1 )
+  facet_wrap( ~ isAt1Os1 )
 
 
 
 ```
 
-```{r}
 
-W <- wilcox.test(x = At1Gm2$meanRnk[At1Gm2$inAt1Os1],
-            y = At1Gm2$meanRnk[!At1Gm2$inAt1Os1],
-            alternative = "greater" )
-At1Gm2 %>% 
-  ggplot( aes(x=meanRnk, color=isAt1Os1)) + 
+However, the singleton group has a significantly higher ORS in general (see wilcoxon rank-sum test below). (The higher variance/lower correlation between the duplicates might just be an artifact caused by greater uncertainty in higher ORS values). This supports the hypothesis that gene-families with 1:1 orthologs tend have more conserved expression and shows that the method has the power to detect such differences when comparing sets of genes. These tests doesn't say much about the _Gm_ duplicates as most of the expression divergence likely occured in the _At_ lineage or before the _Gm_ duplication.
+
+
+```{r wilcoxTestGmDuplicateWithOsSingleton}
+
+# gather the two duplicates into one column again
+At1Gm2regathered <- gather(At1Gm2, key=firstOrLast, value=logORS, rnk1, rnk2)
+
+
+# Wilkox rank-sum test
+W <- with(At1Gm2regathered, 
+          wilcox.test(x = logORS[inAt1Os1],
+                      y = logORS[!inAt1Os1],
+                      alternative = "greater" ) )
+
+At1Gm2regathered %>% 
+  ggplot( aes(x=logORS, color=isAt1Os1)) + 
   ggtitle( paste("Wilkox rank-sum test P =",signif(W$p.value,2))) +
-  xlab("Mean -log10(P) of At1:Gm2 orthologs") +
+  xlab("logORS of At1:Gm2 orthologs") +
+  theme(legend.title=element_blank()) +
   geom_density()
 ```
 
+The same test can be done on the single copy _Gm_ genes (At1:Gm1) where we see a similar pattern but not as strong, i.e. gene families with 1:1 orthology with _Os_ tend to have more conserved expression pattern. 
 
-If we compare the ranks of the At1:Os1 orthologs with the corresponding mean ranks of the At1:Gm2 orthologs we see that they correlate well but that At1:Gm2 rarely have higher rank than At1:Os1. As At:Os is more distantly related than At:Gm this is not expected. A boring explanation could be that the reduced ranks in At:Gm is mainly a result of sample bias in Gm.
+```{r wilcoxTestGmSingletonWithOsSingleton}
+At1Gm1 <-
+  filter(ORS, spcPair=="AtGm", N1==1, N2==1) %>%
+  mutate( inAt1Os1 = SPC1 %in% At1Os1$SPC1) %>% 
+  mutate( isAt1Os1 = as.factor(ifelse(inAt1Os1, "At:Os singleton","not At:Os singleton")) )
+
+# Wilkox rank-sum test
+W <- with(At1Gm1, 
+          wilcox.test(x = logORS[inAt1Os1],
+                      y = logORS[!inAt1Os1],
+                      alternative = "greater" ) )
+
+At1Gm1 %>% 
+  ggplot( aes(x=logORS, color=isAt1Os1)) + 
+  ggtitle( paste("Wilkox rank-sum test P =",signif(W$p.value,2))) +
+  xlab("logORS of At1:Gm1 orthologs") +
+  theme(legend.title=element_blank()) +
+  geom_density()
+```
+
+We have shown the retained duplicates in _Gm_ have more conserved expression than what is expected of duplicated genes and that many of them belong to gene families that tend to have single copies in other species (e.g. At1:Os1), however, is this because the duplicates haven't had enough time to be lost or is there a selection pressure to retain the duplicates? One way to test this is to look at the _Gm_ duplicates and see if these are more likely to be orthologous to At1:Os1 genes than the single copy _Gm_ genes (fisher's exact test is marginally significant at P<0.05). Note that this might not be the best test as the At1:Gm2 genes does not represent all the Gm genes with retained duplicates since the latest WGD as it is limited to those that are single copy in _At_ and was most likely single copy prior to the latest _Gm_ WGD.
+
+
+```{r OsSingletonInAt1Gm1vsAt1Gm2}
+tbl <- table(rep(c("At1:Gm1","At1:Gm2"),c(nrow(At1Gm1),nrow(At1Gm2))),
+             c(as.character(At1Gm1$isAt1Os1),as.character(At1Gm2$isAt1Os1)))
+
+fishy <- fisher.test(tbl,alternative = "less")
+
+plot(tbl, main="Duplicate retention in Gm and At:Os orthology", 
+     sub=paste("Fisher's exact test P-value =",signif(fishy$p.value,3) ) )
+
+knitr::kable(tbl)
+```
+
+Ok, so there is indication that the duplicates in _Gm_ are under selection pressure to be retained even though the same gene-families have a tendency to only retain single copies in other species. This fits the hypothesis that after a WGD event the duplicated state is the normal and a loss of duplicate, even though they are redundant, would lead to a reduction in the gene's expression which might have an effect on fitness. Following this logic I hypothesize that genes that are sensitive to changes in gene regulation are more likely to retain their copy in _Gm_. To test this I use the ORS (gene expression conservation) of 1:1 orthologs between two different (i.e. not _Gm_) species and separate the ORS values into two distributions corresponding to whether the _Gm_ ortholog is duplicate or single copy. The hypothesis is then that the ORS is higher when the _Gm_ ortholog is duplicated. The figure below shows that The ORS between At1:Os1 tend to be higher when the _Gm_ ortholog is duplicated (At1:Gm2) than when it is single copy (At1:Gm1).
+
+
+```{r defXYZtest}
+# Make it general, do gene families that are Xx1:Zz2 have higher or lower ORS in Xx1:Yy1 than those that are Xx1:Zz1
+
+getXxn1Yyn2 <- function(Xx,Yy,n1,n2){
+  if( Xx > Yy){
+    # swap order
+    filter(ORS, spcPair==paste0(Yy,Xx), N1==n2, N2==n1) %>% 
+      mutate(tmp=SPC1, SPC1=SPC2, SPC2=tmp, tmp=NULL) %>% 
+      mutate(tmp=N1, N1=N2, N2=tmp, tmp=NULL)
+  } else {
+    # normal order
+    filter(ORS, spcPair==paste0(Xx,Yy), N1==n1, N2==n2)
+  }
+}
+
+
+
+testXYZ <- function(spcX,spcY,spcZ, doPlot=F, alternative = "greater"){
+  
+  Xx1Zz1 <- getXxn1Yyn2(spcX, spcZ, 1, 1)
+  Xx1Zz2 <- getXxn1Yyn2(spcX, spcZ, 1, 2)
+  
+  Xx1Yy1 <- 
+    # filter(ORS, spcPair==paste0(spcX,spcY), N1==1, N2==1) %>% 
+    getXxn1Yyn2(spcX, spcY, 1, 1) %>% 
+    # add Xx:Zz orthology information
+    mutate( XxZzOrthology = as.factor(ifelse(SPC1 %in% Xx1Zz1$SPC1, "1:1",
+                                             ifelse(SPC1 %in% Xx1Zz2$SPC1, "1:2","neither")))) %>% 
+    filter( XxZzOrthology != "neither")
+    
+  # Wilkox rank-sum test
+  W2 <- with(Xx1Yy1, 
+            wilcox.test(x = logORS[XxZzOrthology=="1:2"],
+                        y = logORS[XxZzOrthology=="1:1"],
+                        alternative = alternative ) )
+  
+  
+  
+  if(doPlot){
+    # count occurences
+    cntTbl <- table(Xx1Yy1$XxZzOrthology)
+    
+    Xx1Yy1 %>% 
+      ggplot( aes(x=logORS, color=XxZzOrthology)) + 
+      ggtitle( paste0("Wilkox rank-sum test (",spcX,"1:",spcZ,"2 ",c(greater=">",less="<")[alternative],
+                      " ",spcX,"1:",spcZ,"1) P = ",signif(W2$p.value,2))) +
+      xlab(paste0("logORS of ",spcX,"1:",spcY,"1 orthologs")) +
+      theme(legend.title=element_blank()) +
+      scale_color_discrete(breaks=c("1:1", "1:2"),
+                           labels=c(paste0(spcX,"1:",spcZ,"1 (n = ",cntTbl["1:1"],")"), 
+                                    paste0(spcX,"1:",spcZ,"2 (n = ",cntTbl["1:2"],")")))+
+      geom_density()
+  } else {
+    return(W2)
+  }
+  
+}
+
+```
 
 ```{r}
+testXYZ(spcX = "At", spcY="Os", spcZ="Gm", doPlot = T,alternative = "greater")
+```
+
+The same kind of test was done for all combinations of three species (see below). ORS is calculated betwen spcX and spcY and tested for whther the ORS is higher (red) or lower (blue) when the ortholog in spcZ (plot caption) is duplicate (1:2 orthology in spcX:spcZ) or single copy.
+
+```{r}
+
+
+spcs <- c("At","Gm","Sl","Os","Zm")
+pDF <- 
+  crossing(spcX=spcs,spcY=spcs,spcZ=spcs) %>% 
+  mutate( pVal = mapply(spcX,spcY,spcZ,FUN=function(spcX,spcY,spcZ){
+    if(any(duplicated(c(spcX,spcY,spcZ)))){
+      return(NA)
+    } else {
+      pVal <- -log10(testXYZ(spcX, spcY, spcZ,alternative = "two.sided")$p.value) *
+        sign(testXYZ(spcX, spcY, spcZ,alternative = "less")$p.value -
+               testXYZ(spcX, spcY, spcZ,alternative = "greater")$p.value)
+    }
+  }))
+
+pDF %>% 
+  mutate( Pvalue = cut(pVal,c(-Inf,-2,-1,0,1,2,Inf),
+                       labels = c("P < 0.01 (ORS lower when duplicate)", 
+                                  "P < 0.1 (ORS lower when duplicate)", 
+                                  "P > 0.1 (ORS lower when duplicate)",
+                                  "P > 0.1 (ORS higher when duplicate)", 
+                                  "P < 0.1 (ORS higher when duplicate)",
+                                  "P < 0.01 (ORS higher when duplicate)")) ) %>% 
+ggplot(aes(x = spcX, y = spcY, fill = Pvalue )) +
+  geom_tile() +
+  scale_fill_manual(values = colorRampPalette(c("blue","black","red"))(6) ) +
+  coord_equal() +
+  theme_bw() +
+  facet_wrap( ~spcZ )
+  
+
+# lapply(setNames(spcs,spcs),function(spcZ){
+#   pMat <- matrix(NA,nrow = 5,ncol=5, dimnames = list(spcX=spcs,spcY=spcs))
+#   for(spcX in setdiff(spcs,spcZ)){
+#     for(spcY in setdiff(spcs,c(spcZ,spcX))){
+#       pMat[spcX,spcY] <- testXYZ(spcX, spcY, spcZ,alternative = "less")$p.value
+#     }
+#   }
+#   return(pMat)  
+# }) -> pListLess
+# 
+
+# 
+```
+
+
+```{r eval=F}
+GmGm <- readr::read_tsv("anchorpoints.txt",na = "#no_data")
+
+At1Gm2Genes <-
+  filter(ORS, spcPair=="AtGm", N1==1, N2==2) %>%
+  select(SPC1,SPC2,logORS) %>% 
+  mutate( SPC2 = sub("GLYMA","GM",SPC2)) %>% 
+  group_by(SPC1) %>% 
+  mutate( dupNr = min_rank(SPC2)) %>% 
+  ungroup
+
+At1Gm2Genes <-
+  At1Gm2Genes %>% 
+  filter(dupNr==1) %>% 
+  transmute(gene1 = SPC2, At=SPC1,logORS1=logORS) %>% 
+  left_join( At1Gm2Genes %>% 
+               filter(dupNr==2) %>% 
+               transmute(gene2 = SPC2, At=SPC1,logORS2=logORS)) %>% 
+  mutate( gene_xy = ifelse(gene1 %in% GmGm$gene_y, paste(gene2,gene1,sep="_"), paste(gene1,gene2,sep="_")))
+
+table(At1Gm2Genes$gene_xy %in% paste(GmGm$gene_x,GmGm$gene_y,sep="_"))
+
+GmGm %>%
+  mutate( gene_xy=paste(gene_x,gene_y,sep="_")) %>% 
+  inner_join(At1Gm2Genes) %>% 
+  select(multiplicon_id, gene_x, gene_y, Ks, `4dtv`, At, logORS1, logORS2) %>% 
+  group_by(multiplicon_id) %>% 
+  mutate( multiplicon_Ks = median(Ks), multiplicon_size=length(Ks)) %>% 
+  ungroup %>% 
+  filter(multiplicon_size>100) %>% 
+  ggplot( aes(x=`4dtv`,y=Ks,color=as.factor(multiplicon_id))) +
+  geom_point()
+
+```
+
+
+```{r eval=F}
+library(biomaRt)
+
+downloadParalogs <- function(species="athaliana"){
+  # use the ensembl plants mart
+  ensembl <- useMart("plants_mart",dataset=paste0(species,"_eg_gene"), host="plants.ensembl.org")
+  # get gene id, paralogs and MRCA
+  paralogs <- getBM(attributes=c("ensembl_gene_id", 
+                                 paste0(species,"_eg_paralog_ensembl_gene"),
+                                 paste0(species,"_eg_paralog_subtype"), # MRCA
+                                 paste0(species,"_eg_paralog_dn"),
+                                 paste0(species,"_eg_paralog_ds")),
+                    mart = ensembl)
+  # change the column names
+  colnames(paralogs) <- c("geneID","paralog","MRCA","Dn","Ds")
+  
+  return(paralogs)
+}
+
+GmParalogs <- downloadParalogs("gmax")
+
+At1Gm2 <-
+  filter(ORS, spcPair=="AtGm", N1==1, N2==2) %>% 
+  group_by(SPC1) %>%
+  summarise( meanRnk=mean(logORS), 
+             rnk1=first(logORS),
+             rnk2=last(logORS),
+             gene1=first(SPC2),
+             gene2=last(SPC2)) %>% 
+  mutate( inAt1Os1 = SPC1 %in% At1Os1$SPC1) %>% 
+  mutate( isAt1Os1 = as.factor(ifelse(inAt1Os1, "At:Os singleton","not At:Os singleton")) )
+
+
+idx <- match(paste(At1Gm2$gene1,At1Gm2$gene2), paste(GmParalogs$geneID,GmParalogs$paralog))
+At1Gm2$MRCA <- GmParalogs$MRCA[idx]
+At1Gm2$Ds <- GmParalogs$Ds[idx]
+
+plot(density(At1Gm2$Ds,na.rm=T))
+
+At1Gm2 %>% 
+#  mutate( ORSdir = as.factor(c(rnks="At -> Gm", rnksT="Gm -> At")[rnkT]) ) %>% 
+  filter(!is.na(mrca)) %>% 
+  ggplot(aes(x=as.factor(mrca),y=abs(rnk1-rnk2))) +
+  geom_boxplot() 
+  # geom_density2d() +
+  # facet_wrap( ~ isAt1Os1 )
+```
+
+
+```{r eval=F}
+# If we compare the ranks of the At1:Os1 orthologs with the corresponding mean ranks of the At1:Gm2 orthologs we see that they correlate well but that At1:Gm2 rarely have higher rank than At1:Os1. As At:Os is more distantly related than At:Gm this is not expected. A boring explanation could be that the reduced ranks in At:Gm is mainly a result of sample bias in Gm.
+
 At1Os1 %>% 
   transmute(SPC1=SPC1, logRnkAtOs=logRnk) %>% 
   inner_join(At1Gm2, by="SPC1") %>% 
