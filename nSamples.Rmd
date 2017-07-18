@@ -26,13 +26,13 @@ Samples were permuted in two different ways, either by shuffling the order of th
 
 ```{r loadData}
 
+# load ranks based on all samples
 rnks_allSamples <- readRDS("data/subsets/nSamples/rnks_allSamples.RDS")
 
-medRnkAllSamples <- 
-  data_frame(rnks = list(rnks_allSamples)) %>% 
-  unnest1( .id = "rnkDir" ) %>% 
-  mutate( medRnk=map_dbl(rnks, median, na.rm=T))
+# calculate median logORS (undirected) for all samples
+medLogORS_allSamples <- median(-log10(1.0001-(rnks_allSamples$AtOs+rnks_allSamples$OsAt)/2))
 
+# load ranks based on samples subsets
 rnks <- 
   data_frame( filename = dir("data/subsets/nSamples",
                              pattern="rnks_(.*)_(.*)_(.*).RDS",
@@ -41,32 +41,35 @@ rnks <-
           rndType = sub("rnks_(.*)_(.*)_(.*).RDS","\\1",basename(filename)),
           idx = as.integer(sub("rnks_(.*)_(.*)_(.*).RDS","\\2",basename(filename))),
           n = as.integer(sub("rnks_(.*)_(.*)_(.*).RDS","\\3",basename(filename))),
-          filename = NULL) %>% 
-  unnest1( .id = "rnkDir" ) %>% 
-  mutate( medRnk=map_dbl(rnks, median, na.rm=T))
-
-# fill in the last point (i.e copy)
-rnks <- 
+          filename = NULL)
+  
+# calculate median logORS (undirected) for each sample subset
+medLogORS <-
   rnks %>% 
-  dplyr::select(idx, rndType, rnkDir) %>%
-  unique() %>% 
-  mutate( n=1363 ) %>% 
-  left_join(medRnkAllSamples, by = "rnkDir") %>% 
-  bind_rows(rnks)
+  mutate( medLogORS = map_dbl(rnks, ~ median(-log10(1.0001-(.x[[1]]+.x[[2]])/2), na.rm=T) ),
+          rnks = NULL)
+
+# fill in the last point (i.e copy the allSamples result to each of the series)
+medLogORS <-
+  medLogORS %>%
+  dplyr::select(idx, rndType) %>%
+  unique() %>%
+  mutate( n=1363, medLogORS = medLogORS_allSamples) %>%
+  bind_rows(medLogORS)
 
 ```
+
 
 When randomizing by study, the median ORS always increase when the number of samples increases. In contrast, when randomizing by individual samples, the ORS seem to reach the maximum and stay level after just one tenth of the samples have been included. Note that, although seldom, there are points were the additional samples results in a lower median ORS.
 
 __Figure text:__ Median ORS between _At_ and _Os_ using various number of permuted _At_ samples. Each of the thin lines represent one sample permutation, where each point represents the same samples as the previous point plus addition samples. The thick lines show the mean of the permutations.
 
 ```{r plot_nSamples}
-rnks %>% 
-  filter(rnkDir=="AtOs") %>% 
+medLogORS %>% 
   mutate(rndType=factor(rndType,levels = c("rndSamples","rndStudies"), 
                         labels=c("Individual samples","Studies"))) %>% 
   # mutate( logMedRnk = -log10(1-medRnk), medRnkP = 1-medRnk) %>% 
-  ggplot( aes(n, medRnk, group = interaction(idx, rndType))) +
+  ggplot( aes(n, medLogORS, group = interaction(idx, rndType))) +
   geom_line( size = 0.2, alpha=0.5,
              aes( group = interaction(idx, rndType),
                   color = rndType)) +
@@ -80,15 +83,38 @@ rnks %>%
   scale_colour_brewer(palette = "Set1") +
   scale_x_log10( breaks=c(10,20,50,100,200,500,1000),
                  minor_breaks=c((1:10)*10^1,(1:10)*10^2)) +
-  ylim(c(NA,1)) +
+  # ylim(c(NA,1)) +
   xlab("Number of At samples included") +
-  ylab("Median ortholog rank score") +
+  ylab("Median logORS") +
   labs(color = "Randomized by:") +
   theme_linedraw() +
   theme(legend.position = "bottom")
 ```
 
 (Alternative figure) The figure below shows the same as above but with ORS for both directions (At -> Os and Os -> At). 
+
+```{r calcDirectionalORS}
+medRnkAllSamples <-
+  data_frame(rnks = list(rnks_allSamples)) %>%
+  unnest1( .id = "rnkDir" ) %>%
+  mutate( medRnk=map_dbl(rnks, median, na.rm=T))
+
+rnks <-
+  rnks %>%
+  unnest1( .id = "rnkDir" ) %>%
+  mutate( medRnk=map_dbl(rnks, median, na.rm=T))
+
+# fill in the last point (i.e copy)
+rnks <-
+  rnks %>%
+  dplyr::select(idx, rndType, rnkDir) %>%
+  unique() %>%
+  mutate( n=1363 ) %>%
+  left_join(medRnkAllSamples, by = "rnkDir") %>%
+  bind_rows(rnks)
+
+```
+
 
 ```{r plot_nSamples_withRnkDir}
 rnks %>% 
