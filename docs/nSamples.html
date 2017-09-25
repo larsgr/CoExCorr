@@ -213,7 +213,7 @@ $(document).ready(function () {
 </div>
 <div id="method" class="section level3">
 <h3>Method</h3>
-<p>To test the effect of the number of samples we picked subsets of various sizes out of the 1363 <em>At</em> samples available and calculated ORS (PCC+MI) against the full set of <em>Os</em> samples (454 samples). Only 1:1 orthologs were included (~5k genes) to save computation time.</p>
+<p>To test the effect of the number of samples we picked subsets of various sizes out of the 1363 <em>At</em> samples available and calculated ORS (PCC+MR) against the full set of <em>Os</em> samples (454 samples). Only 1:1 orthologs were included (~5k genes) to save computation time.</p>
 <p>Samples were permuted in two different ways, either by shuffling the order of the individual samples or by shuffling the order of the studies (i.e. keeping samples from the same experiment together). This was repeated 10 times for the studies and 5 times for individual sample permutations. Using the permuted sample order, the first 12,25,50,100,200,400 and 800 samples were used to calculate ORS.</p>
 </div>
 <div id="result" class="section level3">
@@ -221,6 +221,8 @@ $(document).ready(function () {
 <p>When randomizing by study, the median ORS always increase when the number of samples increases. In contrast, when randomizing by individual samples, the ORS seem to reach the maximum and stay level after just one tenth of the samples have been included. Note that, although seldom, there are points were the additional samples results in a lower median ORS.</p>
 <p><strong>Figure text:</strong> Median ORS between <em>At</em> and <em>Os</em> using various number of permuted <em>At</em> samples. Each of the thin lines represent one sample permutation, where each point represents the same samples as the previous point plus addition samples. The thick lines show the mean of the permutations.</p>
 <p><img src="nSamples_files/figure-html/plot_nSamples-1.svg" width="672" /></p>
+<p>But how stable are the ORS values between the permutations? The plot below shows the correlation between the logORS values from the different permutations.</p>
+<p><img src="nSamples_files/figure-html/plot_correlationBetweenPerms-1.svg" width="672" /></p>
 <p>(Alternative figure) The figure below shows the same as above but with ORS for both directions (At -&gt; Os and Os -&gt; At).</p>
 <p><img src="nSamples_files/figure-html/plot_nSamples_withRnkDir-1.svg" width="672" /></p>
 <p>(Alternative figure) Plot with -log10(1-ORS) transformed values:</p>

@@ -91,6 +91,59 @@ medLogORS %>%
   theme(legend.position = "bottom")
 ```
 
+But how stable are the ORS values between the permutations? The plot below shows the correlation between the logORS values from the different permutations.
+
+
+```{r plot_correlationBetweenPerms}
+
+# calculate logORS for all samples
+logORS_allSamples <- -log10(1.0001-(rnks_allSamples$AtOs+rnks_allSamples$OsAt)/2)
+
+# calculate logORS for each permutation
+sapply(rnks$rnks,function(x){
+  -log10(1.0001-(x[[1]]+x[[2]])/2)[names(logORS_allSamples)]
+}) -> logORS
+
+colnames(logORS) <- paste(rnks$rndType,rnks$idx,rnks$n,sep = "_")
+
+corPermDf <-
+  rnks %>% 
+  select(rndType,n) %>% 
+  unique()
+
+# function to correlate ranks between all the permutations
+corPerms <- function(n,rndType){
+  m <- cor(logORS[,rnks$n==n & rnks$rndType==rndType],use = "p")
+  m[upper.tri(m)] # keep only upper triangle
+}
+
+corPermDf$cor <- mapply(n=corPermDf$n,rndType=corPermDf$rndType,FUN = corPerms)
+
+  
+corPermDf %>% 
+  mutate(rndType=factor(rndType,levels = c("rndSamples","rndStudies"), 
+                        labels=c("Individual samples","Studies"))) %>% 
+  unnest() %>% 
+  ggplot(aes(x=n,group=rndType,y=cor, color = rndType)) +  
+  geom_point(position = position_jitter(width = 0.01), alpha = 0.4) +
+  # stat_summary( fun.data = mean_sdl, geom = "errorbar", width = 0.1) +
+  stat_summary( fun.y = mean, geom = "line", size = 0.7) +
+  # stat_summary( fun.y = mean, geom = "point", size= 2) +
+  scale_colour_brewer("Randomized by:", palette = "Set1") +
+  scale_fill_brewer("Randomized by:", palette = "Set1") +
+  scale_x_log10( breaks=c(10,20,50,100,200,500,1000),
+                 minor_breaks=c((1:10)*10^1,(1:10)*10^2)) +
+  ylim(c(0,1)) +
+  xlab("Number of At samples included") +
+  ylab("Correlation between permutations") +
+  # labs("Randomized by:") +
+  theme_linedraw() +
+  theme(legend.position = "bottom") 
+  # coord_cartesian(ylim = c(0,1))
+
+```
+
+
 (Alternative figure) The figure below shows the same as above but with ORS for both directions (At -> Os and Os -> At). 
 
 ```{r calcDirectionalORS}
