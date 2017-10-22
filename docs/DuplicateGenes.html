@@ -216,23 +216,73 @@ $(document).ready(function () {
 <p>The following plots show the distribution of ranks (i.e. -log10( Pval ) ) for each pair of species and for ortholog duplication level. “N1” refers to the number of ortholog copies in the first species and N2 in the second. (e.g. a 1:2 ortholog in At:Os would be AtOs N1=1 N2=2)</p>
 <p><img src="DuplicateGenes_files/figure-html/plotOrthoRanks-1.svg" width="1440" /> The following heatmap of median ranks which may give a better overview:</p>
 <p><img src="DuplicateGenes_files/figure-html/orthoMedRnkHeatmap-1.svg" width="672" /></p>
-<p>The main observation is that 1:1 orthologs clearly tend to have higher ranks than orthologs with any number of duplicates and that the ranks get lower when the number of orthologs increases. (Note that there is increased uncertainty in the median of the larger groups as they are more rare). An interresting pattern is that orthologs with either one or two copies in Gm seem to have the approximately same ranks. A possible explanation could be the recent duplication in Gm and that a high portion of the genes that prefer occurr in single copies haven’t had time to lose its copy.</p>
-<p><img src="DuplicateGenes_files/figure-html/OrthoRankTrend-1.svg" width="672" /></p>
+<p>The main observation is that 1:1 orthologs clearly tend to have higher ranks than orthologs with any number of duplicates and that the ranks get lower when the number of orthologs increases. (Note that there is increased uncertainty in the median of the larger groups as they are more rare). An interresting pattern is that orthologs with either one or two copies in <em>Gm</em> seem to have the approximately same ORS. A possible explanation could be the recent duplication in <em>Gm</em> and that a high portion of the genes that would normally occurr in single copies haven’t had time to lose its copy. The plot below shows the the median logORS for 1:1-4 orthologs for all possible species combinations where the colored lines highlight those with duplications in <em>Gm</em> or <em>Zm</em>, both of which have a experinced a recent WGD. From this plot it is clear that duplicates in <em>Gm</em> tend to have about the same or even higher ORS than 1:1 orthologs. Duplicates in <em>Zm</em> have lower ORS than 1:1 orthologs but the difference seem to not be as large as for the other species pairs.</p>
+<p><img src="DuplicateGenes_files/figure-html/OrthoRankTrend-1.svg" width="960" /></p>
 </div>
 <div id="orthologs" class="section level2">
 <h2>1:2 orthologs</h2>
-<p>If we look at 1:2 orthologs we can plot the score between the single ortholog and the two duplicate orthologs. The following plots show the -log10(P) transformed rank for each of the two alternative orthologs plotted against each other. If both of the duplicate genes have retained the same function we expect them to be similar, while if one of the duplicates have taken a different function (i.e. neo- or sub-functionalized) they may have diverged expressed patterns. Since the score for each of the duplicates also depends on whether the single ortholog has diverged it is however expected the scores correlated to a certain degree. There is one plot for each species-pair and the order of the species indicates which species that contain the duplicate, e.g. AtGm contains the At1:Gm2 orthologs.</p>
-<p><img src="DuplicateGenes_files/figure-html/unnamed-chunk-1-1.svg" width="672" /><img src="DuplicateGenes_files/figure-html/unnamed-chunk-1-2.svg" width="672" /></p>
+<p>If we look at 1:2 orthologs we can plot the score between the single ortholog and the two duplicate orthologs. The following plots show the logORS for each of the two alternative orthologs plotted against each other. If both of the duplicate genes have retained the same function we expect them to be similar, while if one of the duplicates have taken a different function (i.e. neo- or sub-functionalized) they may have diverged expressed patterns. Since the score for each of the duplicates also depends on whether the single ortholog has diverged it is however expected the scores correlated to a certain degree. The duplicates in <em>Gm</em> and <em>Zm</em> tend to correlate more than the others, which is expected as they have had less time to diverge.</p>
+<p><img src="DuplicateGenes_files/figure-html/duplicateScatterPlot-1.svg" width="672" /><img src="DuplicateGenes_files/figure-html/duplicateScatterPlot-2.svg" width="672" /></p>
 </div>
 <div id="at1gm2" class="section level2">
 <h2>At1:Gm2</h2>
-<p>The set of genes that have a 1:1 ortholog relationship between At and Os are more likely to be essential and therefore have a conserved expression pattern. Given the recent WGD in Gm there are many of these genes that have duplicate orthologs in Gm (i.e. At1:Gm2). The plots below compare the ranks distribution of two groups of At1:Gm2 orthologs, those that are At1:Os1 (singleton) and those that are not. The singletons are expected to be under selective pressure to retain the expression pattern.</p>
-<p>There seems to be a lower correlation between Gm duplicates among the singletons, perhaps an indication of a selective pressure to conserve only one of the duplicates (i.e. one duplicate is on the way to non-functionalizaition).</p>
-<p>However, there is a also significant difference in the mean ranks (see wilcoxon rank-sum test below) of the two duplicates in the two groups, i.e. the singleton group tend to have higher ranks in general. This might indicate that most of the expression divergence occured in the At lineage or before the WGD in the Gm lineage.</p>
-<p><img src="DuplicateGenes_files/figure-html/testGmDuplicateWithOsSingleton-1.svg" width="672" /></p>
+<p>The set of genes that have a 1:1 ortholog relationship between <em>At</em> and <em>Os</em> are more likely to be essential and therefore have a conserved expression pattern. Given the recent WGD in Gm there are many of these genes that have duplicate orthologs in Gm (i.e. At1:Gm2). The plots below compare the ORS distribution of two groups of At1:Gm2 orthologs, those where the <em>At</em> gene has 1:1 ortholog with <em>Os</em> (i.e. At1:Os1 or singleton) and those that do not.</p>
+<p>If we look at the correlation between the ORS of the duplicates there is little difference between the two groups. In fact there is a slightly lower correlation in the singleton group (note: doing the same with <em>Zm</em> results in higher correlation for the singleton group).</p>
+<p><img src="DuplicateGenes_files/figure-html/plotGmDuplicateWithOsSingleton-1.svg" width="672" /></p>
+<p>However, the singleton group has a significantly higher ORS in general (see wilcoxon rank-sum test below). (The higher variance/lower correlation between the duplicates might just be an artifact caused by greater uncertainty in higher ORS values). This supports the hypothesis that gene-families with 1:1 orthologs tend have more conserved expression and shows that the method has the power to detect such differences when comparing sets of genes. These tests doesn’t say much about the <em>Gm</em> duplicates as most of the expression divergence likely occured in the <em>At</em> lineage or before the <em>Gm</em> duplication.</p>
+<p><img src="DuplicateGenes_files/figure-html/wilcoxTestGmDuplicateWithOsSingleton-1.svg" width="672" /></p>
+<p>The same test can be done on the single copy <em>Gm</em> genes (At1:Gm1) where we see a similar pattern but not as strong, i.e. gene families with 1:1 orthology with <em>Os</em> tend to have more conserved expression pattern.</p>
+<p><img src="DuplicateGenes_files/figure-html/wilcoxTestGmSingletonWithOsSingleton-1.svg" width="672" /></p>
+<p>We have shown the retained duplicates in <em>Gm</em> have more conserved expression than what is expected of duplicated genes and that many of them belong to gene families that tend to have single copies in other species (e.g. At1:Os1), however, is this because the duplicates haven’t had enough time to be lost or is there a selection pressure to retain the duplicates? One way to test this is to look at the <em>Gm</em> duplicates and see if these are more likely to be orthologous to At1:Os1 genes than the single copy <em>Gm</em> genes (fisher’s exact test is marginally significant at P&lt;0.05). Note that this might not be the best test as the At1:Gm2 genes does not represent all the Gm genes with retained duplicates since the latest WGD as it is limited to those that are single copy in <em>At</em> and was most likely single copy prior to the latest <em>Gm</em> WGD.</p>
+<p><img src="DuplicateGenes_files/figure-html/OsSingletonInAt1Gm1vsAt1Gm2-1.svg" width="672" /></p>
+<table>
+<thead>
+<tr class="header">
+<th></th>
+<th align="right">At:Os singleton</th>
+<th align="right">not At:Os singleton</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>At1:Gm1</td>
+<td align="right">842</td>
+<td align="right">614</td>
+</tr>
+<tr class="even">
+<td>At1:Gm2</td>
+<td align="right">2987</td>
+<td align="right">1968</td>
+</tr>
+</tbody>
+</table>
+<p>Ok, so there is indication that the duplicates in <em>Gm</em> are under selection pressure to be retained even though the same gene-families have a tendency to only retain single copies in other species. This fits the hypothesis that after a WGD event the duplicated state is the normal and a loss of duplicate, even though they are redundant, would lead to a reduction in the gene’s expression which might have an effect on fitness. Following this logic I hypothesize that genes that are sensitive to changes in gene regulation are more likely to retain their copy in <em>Gm</em>. To test this I use the ORS (gene expression conservation) of 1:1 orthologs between two different (i.e. not <em>Gm</em>) species and separate the ORS values into two distributions corresponding to whether the <em>Gm</em> ortholog is duplicate or single copy. The hypothesis is then that the ORS is higher when the <em>Gm</em> ortholog is duplicated. The figure below shows that The ORS between At1:Os1 tend to be higher when the <em>Gm</em> ortholog is duplicated (At1:Gm2) than when it is single copy (At1:Gm1).</p>
+<p><img src="DuplicateGenes_files/figure-html/WilcoxAtOs_At1Gm1vsAt1Gm2-1.svg" width="672" /></p>
+<p>The same kind of test was done for all combinations of three species (see below). ORS is calculated betwen spcX and spcY and tested for whther the ORS is higher (red) or lower (blue) when the ortholog in spcZ (plot caption) is duplicate (1:2 orthology in spcX:spcZ) or single copy. What we see is that for duplicates in Gm the corresponding genes tend to have high ORS for 1:1 pairs between any pair of species, although it is less significant when Zm is one of those species. Genes that are duplicates in At, Sl or Os show the opposite trend, namely that they tend to have lower ORS among 1:1 orthologs in other species. Duplicates in Zm is somewhere in between, not significantly high ORS in At, Sl or Sl 1:1 orthologs, but not lower except for 1:1 in Gm.</p>
+<p><img src="DuplicateGenes_files/figure-html/plotXYZmatrix-1.svg" width="672" /></p>
+</div>
+<div id="zm-duplicates-with-anchorpoints-from-most-recent-duplications" class="section level2">
+<h2>Zm duplicates with anchorpoints from most recent duplications</h2>
+<p>Since Zm experienced a WGD about the same time as Gm we sould expect a similar trend (duplicates associated with high ORS). One reason for why this is not so could be that duplicates are not necessarily from the most recent WGD but could be independent smaller duplication events. Here we use colinearity of duplicate regions to classify duplicates of being from the Zm WGD event or not. What we see is that for Os1:Zm2 duplicates, the putative WGD duplicates (about half of the duplicate pairs) tend to have a higher ORS.</p>
+<pre><code>## Parsed with column specification:
+## cols(
+##   multiplicon_id = col_integer(),
+##   species_x = col_character(),
+##   gene_x = col_character(),
+##   species_y = col_character(),
+##   gene_y = col_character(),
+##   Ks = col_double(),
+##   level = col_integer()
+## )</code></pre>
+<pre><code>## Parsed with column specification:
+## cols(
+##   gene_id = col_character(),
+##   id_type = col_character(),
+##   id = col_character()
+## )</code></pre>
+<p><img src="DuplicateGenes_files/figure-html/unnamed-chunk-1-1.svg" width="672" /></p>
+<p>Now let’s test tha At1:Os1 orthologs to see if the duplicates in Zm are associated with higher ORS than singletons if we restrict the duplicates to putative WGD duplicates (see below). No association.</p>
 <p><img src="DuplicateGenes_files/figure-html/unnamed-chunk-2-1.svg" width="672" /></p>
-<p>If we compare the ranks of the At1:Os1 orthologs with the corresponding mean ranks of the At1:Gm2 orthologs we see that they correlate well but that At1:Gm2 rarely have higher rank than At1:Os1. As At:Os is more distantly related than At:Gm this is not expected. A boring explanation could be that the reduced ranks in At:Gm is mainly a result of sample bias in Gm.</p>
-<p><img src="DuplicateGenes_files/figure-html/unnamed-chunk-3-1.svg" width="672" /></p>
 </div>
 
 

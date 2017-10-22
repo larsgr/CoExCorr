@@ -113,7 +113,7 @@ ORS %>%
 
 The main observation is that 1:1 orthologs clearly tend to have higher ranks than orthologs with any number of duplicates and that the ranks get lower when the number of orthologs increases. (Note that there is increased uncertainty in the median of the larger groups as they are more rare). An interresting pattern is that orthologs with either one or two copies in _Gm_ seem to have the approximately same ORS. A possible explanation could be the recent duplication in _Gm_ and that a high portion of the genes that would normally occurr in single copies haven't had time to lose its copy. The plot below shows the the median logORS for 1:1-4 orthologs for all possible species combinations where the colored lines highlight those with duplications in _Gm_ or _Zm_, both of which have a experinced a recent WGD. From this plot it is clear that duplicates in _Gm_ tend to have about the same or even higher ORS than 1:1 orthologs. Duplicates in _Zm_ have lower ORS than 1:1 orthologs but the difference seem to not be as large as for the other species pairs.
 
-```{r OrthoRankTrend}
+```{r OrthoRankTrend, fig.height=3, fig.width=10}
 medORS <- 
   ORS %>% 
   # keep only 1:N and N:1 orthologs where N=1..4
@@ -132,29 +132,22 @@ medORS %>%
       filter(N1==1 & N2==1) %>% 
       mutate( spcPair=sub("(..)(..)","\\2\\1",spcPair))
   ) %>% 
-  # mutate( spcPair2 = ifelse(grepl("..[GZ]m",spcPair),"dup","other")) %>% 
+  mutate( spc1 = substr(spcPair,1,2), spc2 = substr(spcPair,3,4)) %>% 
+  mutate( isGmZm = ifelse(spc2 %in% c("Gm","Zm"),"GmZm","other")) %>% 
+  mutate( linesize = ifelse(spc2 %in% c("Gm","Zm"),1,0.2)) %>% 
   mutate( spcPair2 = factor(ifelse(grepl("..[GZ]m",spcPair),spcPair,"other"),
                             levels=c("AtGm","AtZm","OsGm","OsZm","SlGm","SlZm","ZmGm","GmZm","other") )) %>%
   arrange( spcPair2=="other", substr(spcPair2,3,4),substr(spcPair2,1,2)) %>% 
-  ggplot( aes(x=pmax(N1,N2),y=medLogORS,color=spcPair2) ) +
-  geom_line( aes(group=spcPair,linetype=spcPair2) ) +
-  geom_point() +
+  ggplot( aes(x=pmax(N1,N2),y=medLogORS, color=spc1, shape=spc1) ) +
+  geom_line( aes( group=spcPair ) ) +
+  geom_point( ) +
   theme_bw() +
   ylab("Median logORS") +
   xlab("Ortholog count") +
   scale_x_continuous(breaks=1:4,labels=paste0("1:",1:4)) +
-  scale_color_manual( name="Species compared",
-                      values=c(AtGm="#A6CEE3", AtZm="#1F78B4",
-                               SlGm="#B2DF8A", SlZm="#33A02C",
-                               OsGm="#FB9A99", OsZm="#E31A1C",
-                               ZmGm="#FDBF6F", GmZm="#6A3D9A", other="grey"),
-                      labels=c("At1:GmX","At1:ZmX","Os1:GmX","Os1:ZmX","Sl1:GmX",
-                                 "Sl1:ZmX","Zm1:GmX","Gm1:ZmX","other")) +
-  scale_linetype_manual( name="Species compared",
-                         values = c(AtGm=1, AtZm=1, SlGm=1, SlZm=1,
-                                    OsGm=1, OsZm=1, ZmGm=1, GmZm=1, other=2),
-                      labels=c("At1:GmX","At1:ZmX","Os1:GmX","Os1:ZmX","Sl1:GmX",
-                                 "Sl1:ZmX","Zm1:GmX","Gm1:ZmX","other"))  
+  facet_wrap( ~ spc2, nrow = 1, labeller = as_labeller(function(spc){ paste("Duplicate in",spc) }) ) +
+  scale_color_brewer(palette = "Set1", name="Singleton in:") +
+  scale_shape( name="Singleton in:")
 
 
 
@@ -367,8 +360,9 @@ testXYZ <- function(spcX,spcY,spcZ, doPlot=F, alternative = "greater"){
       ggtitle( paste0("Wilkox rank-sum test (",spcX,"1:",spcZ,"2 ",c(greater=">",less="<")[alternative],
                       " ",spcX,"1:",spcZ,"1) P = ",signif(W2$p.value,2))) +
       xlab(paste0("logORS of ",spcX,"1:",spcY,"1 orthologs")) +
-      theme(legend.title=element_blank()) +
-      scale_color_discrete(breaks=c("1:1", "1:2"),
+      # theme(legend.title=element_blank()) +
+      scale_color_brewer(palette = "Set1", name = "",
+                           breaks=c("1:1", "1:2"),
                            labels=c(paste0(spcX,"1:",spcZ,"1 (n = ",cntTbl["1:1"],")"), 
                                     paste0(spcX,"1:",spcZ,"2 (n = ",cntTbl["1:2"],")")))+
       geom_density()
@@ -380,13 +374,15 @@ testXYZ <- function(spcX,spcY,spcZ, doPlot=F, alternative = "greater"){
 
 ```
 
-```{r}
-testXYZ(spcX = "At", spcY="Os", spcZ="Gm", doPlot = T,alternative = "greater")
+```{r WilcoxAtOs_At1Gm1vsAt1Gm2, fig.height=3, fig.width=7}
+testXYZ(spcX = "At", spcY="Os", spcZ="Gm", doPlot = T,alternative = "greater") +
+  theme_bw()
+
 ```
 
-The same kind of test was done for all combinations of three species (see below). ORS is calculated betwen spcX and spcY and tested for whther the ORS is higher (red) or lower (blue) when the ortholog in spcZ (plot caption) is duplicate (1:2 orthology in spcX:spcZ) or single copy.
+The same kind of test was done for all combinations of three species (see below). ORS is calculated betwen spcX and spcY and tested for whther the ORS is higher (red) or lower (blue) when the ortholog in spcZ (plot caption) is duplicate (1:2 orthology in spcX:spcZ) or single copy. What we see is that for duplicates in Gm the corresponding genes tend to have high ORS for 1:1 pairs between any pair of species, although it is less significant when Zm is one of those species. Genes that are duplicates in At, Sl or Os show the opposite trend, namely that they tend to have lower ORS among 1:1 orthologs in other species. Duplicates in Zm is somewhere in between, not significantly high ORS in At, Sl or Sl 1:1 orthologs, but not lower except for 1:1 in Gm.
 
-```{r}
+```{r plotXYZmatrix}
 
 
 spcs <- c("At","Gm","Sl","Os","Zm")
@@ -431,6 +427,136 @@ ggplot(aes(x = spcX, y = spcY, fill = Pvalue )) +
 
 # 
 ```
+
+## Zm duplicates with anchorpoints from most recent duplications
+
+Since Zm experienced a WGD about the same time as Gm we sould expect a similar trend (duplicates associated with high ORS). One reason for why this is not so could be that duplicates are not necessarily from the most recent WGD but could be independent smaller duplication events. Here we use colinearity of duplicate regions to classify duplicates of being from the Zm WGD event or not. What we see is that for Os1:Zm2 duplicates, the putative WGD duplicates (about half of the duplicate pairs) tend to have a higher ORS. 
+
+```{r}
+# load anchors, i.e. paralog duplicate pairs organized in colinear regions (multiplicons)
+ZmAnchor <- readr::read_delim("anchorpoints.zma.csv.gz",delim = ";")
+
+# need to convert gene IDs from PlazaIDs to Zm version 3 then to Zm version 4
+
+# ZmIDconvertion <- read.table("ftp://ftp.gramene.org/pub/gramene/CURRENT_RELEASE/data/gff3/zea_mays/gene_id_mapping_v3_to_v4/maize.v3TOv4.geneIDhistory.txt", col.names = c("V3_gene","V4_gene","Sequence_change","method","type"))
+ZmID3to4 <- read.table("maize.v3TOv4.geneIDhistory.txt", stringsAsFactors = F,
+                             col.names = c("V3_gene","V4_gene","Sequence_change","method","type"))
+
+ZmIDplazaTo3 <- readr::read_delim("id_conversion.zma.csv.gz",delim = ";")
+
+ZmIDplazaTo4 <-
+  ZmIDplazaTo3 %>% 
+  filter(id_type=="name") %>% 
+  select(plaza_id=gene_id,V3_gene=id) %>% 
+  left_join(ZmID3to4, by="V3_gene") %>% 
+  filter(type=="1-to-1")
+
+# convert anchor gene ids
+ZmAnchor$id_x <- ZmIDplazaTo4$V4_gene[match(ZmAnchor$gene_x, ZmIDplazaTo4$plaza_id)]
+ZmAnchor$id_y <- ZmIDplazaTo4$V4_gene[match(ZmAnchor$gene_y, ZmIDplazaTo4$plaza_id)]
+
+
+# Calculate median Ks for each multiplicon (indicates the age of the duplication)
+ZmSum <- 
+  ZmAnchor %>% 
+  group_by(multiplicon_id) %>% 
+  summarize( KsMed = median(Ks), n = n())
+
+# select the multiplicons with >3 genes and Ks between 0.1-0.7
+# these are most likely from the most recent WGD
+ZmWGDmultiplicons <- filter(ZmSum, KsMed > 0.1, KsMed < 0.7, n > 3)$multiplicon_id
+
+ZmWGDanchors <- filter(ZmAnchor, multiplicon_id %in% ZmWGDmultiplicons)
+
+# get Os1:Zm2 orthos and ORS
+Os1Zm2 <- 
+  ORS %>% 
+  filter(spcPair=="OsZm", N1==1, N2==2)
+
+# Get only the Os geneID of the Os1:Zm2 genes where the Zm duplicates are from the WGD
+Os1ZmWGD <-
+  Os1Zm2 %>% 
+  mutate( multiplicon_x = ZmWGDanchors$multiplicon_id[match(SPC2, ZmWGDanchors$id_x)],
+          multiplicon_y = ZmWGDanchors$multiplicon_id[match(SPC2, ZmWGDanchors$id_y)]) %>% 
+  group_by( SPC1 ) %>% 
+  summarise( ZmWGD = any(na.omit(multiplicon_x) %in% na.omit(multiplicon_y))) %>% 
+  filter( ZmWGD ) %>% 
+  with( SPC1 )
+
+Os1Zm2 <-
+  Os1Zm2 %>% 
+  mutate( isZmWGD = SPC1 %in% Os1ZmWGD)
+
+
+# Wilkox rank-sum test
+Os1Zm2WGD_wilcox <- with(Os1Zm2, 
+          wilcox.test(x = logORS[isZmWGD],
+                      y = logORS[!isZmWGD],
+                      alternative = "greater" ) )
+
+
+
+# plot distribution of Os1:Zm2 logORS divided into those were Zm orthologs are from the WGD or not
+Os1Zm2 %>% 
+  ggplot( aes(x = logORS, color=isZmWGD)) +
+  scale_color_brewer(palette = "Set1", name = "",
+                           breaks=c(F, T),
+                           labels=c(paste0("not WGD (n = ",sum(!Os1Zm2$isZmWGD),")"), 
+                                    paste0("WGD (n = ",sum(Os1Zm2$isZmWGD),")")))+
+  geom_density() +
+  ggtitle( paste("Wilkox rank-sum test (WGD > not WGD) P =",signif(Os1Zm2WGD_wilcox$p.value,2))) +
+  xlab("logORS of Os1:Zm2 orthologs")
+```
+
+Now let's test tha At1:Os1 orthologs to see if the duplicates in Zm are associated with higher ORS than singletons if we restrict the duplicates to putative WGD duplicates (see below). No association. 
+
+```{r}
+spcX="At";spcY="Os";spcZ="Zm"
+Xx1Zz1 <- getXxn1Yyn2(spcX, spcZ, 1, 1)
+Xx1Zz2 <- getXxn1Yyn2(spcX, spcZ, 1, 2)
+
+Xx1ZmWGD <-
+  Xx1Zz2 %>% 
+  mutate( multiplicon_x = ZmWGDanchors$multiplicon_id[match(SPC2, ZmWGDanchors$id_x)],
+          multiplicon_y = ZmWGDanchors$multiplicon_id[match(SPC2, ZmWGDanchors$id_y)]) %>% 
+  group_by( SPC1 ) %>% 
+  summarise( ZmWGD = any(na.omit(multiplicon_x) %in% na.omit(multiplicon_y))) %>% 
+  filter( ZmWGD ) %>% 
+  with( SPC1 )
+
+Xx1Yy1 <- 
+  # filter(ORS, spcPair==paste0(spcX,spcY), N1==1, N2==1) %>% 
+  getXxn1Yyn2(spcX, spcY, 1, 1) %>% 
+  # add Xx:Zz orthology information
+  mutate( XxZzOrthology = as.factor(ifelse(SPC1 %in% Xx1Zz1$SPC1, "1:1",
+                                           # ifelse(SPC1 %in% Xx1Zz2$SPC1, "1:2WGD","neither")))) %>% 
+                                           ifelse(SPC1 %in% Xx1ZmWGD, "1:2WGD","neither")))) %>% 
+  filter( XxZzOrthology != "neither")
+  
+# Wilkox rank-sum test
+W2 <- with(Xx1Yy1, 
+          wilcox.test(x = logORS[XxZzOrthology=="1:2WGD"],
+                      y = logORS[XxZzOrthology=="1:1"],
+                      alternative = "greater" ) )
+
+
+
+# count occurences
+cntTbl <- table(Xx1Yy1$XxZzOrthology)
+
+Xx1Yy1 %>% 
+  ggplot( aes(x=logORS, color=XxZzOrthology)) + 
+  ggtitle( paste0("Wilkox rank-sum test (",spcX,"1:",spcZ,"2 > ",spcX,"1:",spcZ,"1) P = ",signif(W2$p.value,2))) +
+  xlab(paste0("logORS of ",spcX,"1:",spcY,"1 orthologs")) +
+  # theme(legend.title=element_blank()) +
+  scale_color_brewer(palette = "Set1", name = "",
+                       breaks=c("1:1", "1:2WGD"),
+                       labels=c(paste0(spcX,"1:",spcZ,"1 (n = ",cntTbl["1:1"],")"), 
+                                paste0(spcX,"1:",spcZ,"2WGD (n = ",cntTbl["1:2WGD"],")")))+
+  geom_density()
+  
+```
+
 
 
 ```{r eval=F}
